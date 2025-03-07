@@ -1,5 +1,5 @@
 // src/components/ui/AssetDetailsModal.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -69,19 +69,44 @@ const InfoValue = styled(Typography)(({ theme }) => ({
 const AssetDetailsModal = ({ open, handleClose, asset }) => {
   const [tabValue, setTabValue] = useState(0);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
-  const [notes, setNotes] = useState(asset?.notes || '');
+  const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [localAsset, setLocalAsset] = useState(null);
   
-  const { toggleAssetFavorite, assetsAPI, updateAssetLastUsed } = useApi();
+  const { toggleAssetFavorite, assetsAPI, updateAssetLastUsed, assets } = useApi();
 
-  if (!asset) return null;
+  // Use localAsset to ensure we always show the latest data
+  useEffect(() => {
+    if (asset) {
+      setLocalAsset(asset);
+      setNotes(asset.notes || '');
+    }
+  }, [asset]);
+
+  // Update localAsset when assets change (e.g. after toggling favorite)
+  useEffect(() => {
+    if (localAsset && assets.all) {
+      // Find the latest version of this asset in the assets.all array
+      const updatedAsset = assets.all.find(a => a.id === localAsset.id);
+      if (updatedAsset) {
+        setLocalAsset(updatedAsset);
+      }
+    }
+  }, [assets, localAsset]);
+
+  if (!localAsset) return null;
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
 
   const handleToggleFavorite = async () => {
-    await toggleAssetFavorite(asset.id);
+    try {
+      await toggleAssetFavorite(localAsset.id);
+      // The localAsset will be updated via the effect hook when assets change
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
   };
 
   const handleEditNotes = () => {
@@ -92,8 +117,14 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
     setSaving(true);
     try {
       // Save the notes
-      await assetsAPI.update(asset.id, { 
-        ...asset,
+      await assetsAPI.update(localAsset.id, { 
+        ...localAsset,
+        notes
+      });
+      
+      // Update local asset copy
+      setLocalAsset({
+        ...localAsset,
         notes
       });
       
@@ -120,15 +151,15 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
   };
 
   const handleDownload = async () => {
-    if (asset.downloadUrl) {
+    if (localAsset.downloadUrl) {
       // Update last used date when downloading
       try {
-        await updateAssetLastUsed(asset.id);
+        await updateAssetLastUsed(localAsset.id);
       } catch (error) {
         console.error('Error updating last used date:', error);
       }
       
-      window.open(asset.downloadUrl, '_blank');
+      window.open(localAsset.downloadUrl, '_blank');
     } else {
       console.log('No download URL available');
       alert('No download URL available for this asset');
@@ -149,7 +180,7 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
       }}
     >
       <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h2">{asset.name}</Typography>
+        <Typography variant="h2">{localAsset.name}</Typography>
         <IconButton aria-label="close" onClick={handleClose} size="small">
           <CloseIcon />
         </IconButton>
@@ -160,8 +191,8 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
           <Grid item xs={12} md={5}>
             <Box
               component="img"
-              src={asset.thumbnail}
-              alt={asset.name}
+              src={localAsset.thumbnail}
+              alt={localAsset.name}
               sx={{
                 width: '100%',
                 height: 'auto',
@@ -175,7 +206,7 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
                 fullWidth
                 startIcon={<DownloadIcon />}
                 onClick={handleDownload}
-                disabled={!asset.downloadUrl}
+                disabled={!localAsset.downloadUrl}
               >
                 Download Asset
               </Button>
@@ -183,9 +214,9 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
                 variant="outlined"
                 fullWidth
                 onClick={handleToggleFavorite}
-                startIcon={asset.favorited ? <FavoriteIcon color="error" /> : <FavoriteBorderIcon />}
+                startIcon={localAsset.favorited ? <FavoriteIcon color="error" /> : <FavoriteBorderIcon />}
               >
-                {asset.favorited ? 'Favorited' : 'Add to Favorites'}
+                {localAsset.favorited ? 'Favorited' : 'Add to Favorites'}
               </Button>
             </Box>
           </Grid>
@@ -194,12 +225,12 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
           <Grid item xs={12} md={7}>
             <InfoItem>
               <InfoLabel>Creator</InfoLabel>
-              <InfoValue>{asset.creator}</InfoValue>
+              <InfoValue>{localAsset.creator}</InfoValue>
             </InfoItem>
 
             <InfoItem>
               <InfoLabel>Type</InfoLabel>
-              <InfoValue>{asset.type}</InfoValue>
+              <InfoValue>{localAsset.type}</InfoValue>
             </InfoItem>
 
             <Grid container spacing={2}>
@@ -208,7 +239,7 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
                   <InfoLabel>Date Added</InfoLabel>
                   <InfoValue sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <CalendarTodayIcon fontSize="small" />
-                    {formatDate(asset.dateAdded)}
+                    {formatDate(localAsset.dateAdded)}
                   </InfoValue>
                 </InfoItem>
               </Grid>
@@ -217,7 +248,7 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
                   <InfoLabel>Last Used</InfoLabel>
                   <InfoValue sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <HistoryIcon fontSize="small" />
-                    {formatDate(asset.lastUsed)}
+                    {formatDate(localAsset.lastUsed)}
                   </InfoValue>
                 </InfoItem>
               </Grid>
@@ -237,15 +268,15 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
               >
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2">Size:</Typography>
-                  <Typography variant="body2">{asset.fileSize || 'Unknown'}</Typography>
+                  <Typography variant="body2">{localAsset.fileSize || 'Unknown'}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2">Version:</Typography>
-                  <Typography variant="body2">{asset.version || 'N/A'}</Typography>
+                  <Typography variant="body2">{localAsset.version || 'N/A'}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2">Local Path:</Typography>
-                  <Tooltip title={asset.filePath || 'No path specified'}>
+                  <Tooltip title={localAsset.filePath || 'No path specified'}>
                     <Typography 
                       variant="body2" 
                       sx={{ 
@@ -256,17 +287,17 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
                         cursor: 'pointer'
                       }}
                       onClick={() => {
-                        if (asset.filePath) 
-                          navigator.clipboard.writeText(asset.filePath);
+                        if (localAsset.filePath) 
+                          navigator.clipboard.writeText(localAsset.filePath);
                       }}
                     >
-                      {asset.filePath || 'No path specified'}
+                      {localAsset.filePath || 'No path specified'}
                     </Typography>
                   </Tooltip>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2">Download URL:</Typography>
-                  <Tooltip title={asset.downloadUrl || 'No URL specified'}>
+                  <Tooltip title={localAsset.downloadUrl || 'No URL specified'}>
                     <Typography 
                       variant="body2" 
                       sx={{ 
@@ -274,18 +305,18 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
-                        cursor: asset.downloadUrl ? 'pointer' : 'default',
-                        color: asset.downloadUrl ? 'primary.main' : 'text.secondary',
+                        cursor: localAsset.downloadUrl ? 'pointer' : 'default',
+                        color: localAsset.downloadUrl ? 'primary.main' : 'text.secondary',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 0.5
                       }}
                       onClick={() => {
-                        if (asset.downloadUrl) 
-                          window.open(asset.downloadUrl, '_blank');
+                        if (localAsset.downloadUrl) 
+                          window.open(localAsset.downloadUrl, '_blank');
                       }}
                     >
-                      {asset.downloadUrl ? (
+                      {localAsset.downloadUrl ? (
                         <>
                           <LinkIcon fontSize="small" />
                           Original Source
@@ -358,7 +389,7 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
                 </Typography>
                 
                 <List sx={{ bgcolor: 'background.default', borderRadius: 2, mb: 3 }}>
-                  {asset.compatibleWith && asset.compatibleWith.map((base, index) => (
+                  {localAsset.compatibleWith && localAsset.compatibleWith.map((base, index) => (
                     <ListItem key={index}>
                       <ListItemIcon>
                         <CheckCircleIcon color="success" />
@@ -396,7 +427,7 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
               <Box>
                 <Typography variant="h3" sx={{ mb: 2 }}>Description</Typography>
                 <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                  {asset.description || 'No description provided.'}
+                  {localAsset.description || 'No description provided.'}
                 </Typography>
               </Box>
             )}
@@ -405,10 +436,10 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
               <Box>
                 <Typography variant="h3" sx={{ mb: 2 }}>Tags</Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {asset.tags && asset.tags.map((tag, index) => (
+                  {localAsset.tags && localAsset.tags.map((tag, index) => (
                     <StyledChip key={index} label={tag} />
                   ))}
-                  {(!asset.tags || asset.tags.length === 0) && (
+                  {(!localAsset.tags || localAsset.tags.length === 0) && (
                     <Typography variant="body1">No tags assigned to this asset.</Typography>
                   )}
                 </Box>
@@ -421,10 +452,10 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
         <Button 
           startIcon={<FileCopyIcon />} 
           onClick={() => {
-            if (asset.filePath)
-              navigator.clipboard.writeText(asset.filePath);
+            if (localAsset.filePath)
+              navigator.clipboard.writeText(localAsset.filePath);
           }}
-          disabled={!asset.filePath}
+          disabled={!localAsset.filePath}
         >
           Copy Path
         </Button>

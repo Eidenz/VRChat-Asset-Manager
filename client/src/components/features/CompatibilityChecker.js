@@ -42,8 +42,8 @@ const ResultItem = styled(Box)(({ theme, status }) => ({
   marginBottom: theme.spacing(1),
 }));
 
-// Mock compatibility matrix (we'll assume this is defined here since it's specific compatibility logic)
-// In a real app, you might want to move this to the API/database
+// Note: In the future, this could be fetched from the backend
+// For now, we'll keep it in the component as a fallback
 const compatibilityMatrix = {
   'Feline3.0': {
     'HumanMale4.2': {
@@ -83,7 +83,7 @@ const compatibilityMatrix = {
 
 const CompatibilityChecker = () => {
   // Use the API context
-  const { avatars, assets, loading, errors } = useApi();
+  const { avatars, assets, loading, errors, assetsAPI } = useApi();
 
   const [sourceAvatar, setSourceAvatar] = useState('');
   const [targetAvatar, setTargetAvatar] = useState('');
@@ -91,10 +91,30 @@ const CompatibilityChecker = () => {
   const [localLoading, setLocalLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [mode, setMode] = useState('asset'); // 'asset' or 'avatar'
+  const [compatibilityData, setCompatibilityData] = useState(compatibilityMatrix);
 
   // Get all assets from api context
   const allAssets = assets.all || [];
   const allAvatars = avatars || [];
+
+  // Fetch compatibility data from API if available
+  useEffect(() => {
+    // This is a placeholder for future implementation
+    // In the future, you would fetch the compatibility matrix from the backend
+    // For now, we'll use the local fallback
+    const fetchCompatibilityData = async () => {
+      try {
+        // This API endpoint doesn't exist yet, but represents a future implementation
+        // const response = await assetsAPI.getCompatibilityMatrix();
+        // setCompatibilityData(response.data);
+      } catch (error) {
+        console.warn('Using fallback compatibility data');
+        // Keep using the local fallback
+      }
+    };
+
+    fetchCompatibilityData();
+  }, []);
 
   const handleSourceAvatarChange = (event) => {
     setSourceAvatar(event.target.value);
@@ -120,14 +140,16 @@ const CompatibilityChecker = () => {
     setAsset('');
   };
 
-  const checkCompatibility = () => {
+  const checkCompatibility = async () => {
     if (mode === 'asset' && (!sourceAvatar || !asset)) return;
     if (mode === 'avatar' && (!sourceAvatar || !targetAvatar)) return;
     
     setLocalLoading(true);
     
-    // Simulate API call with timeout - in real app this might be a API request
-    setTimeout(() => {
+    try {
+      // In a future implementation, this could be an API call
+      // For now, we'll handle the check locally
+      
       let mockResults;
       
       if (mode === 'asset') {
@@ -145,7 +167,7 @@ const CompatibilityChecker = () => {
         }
         
         const isCompatible = selectedAsset.compatibleWith && 
-                             selectedAsset.compatibleWith.includes(selectedAvatar.base);
+                            selectedAsset.compatibleWith.includes(selectedAvatar.base);
         
         mockResults = {
           overall: isCompatible ? 'yes' : 'partial',
@@ -190,11 +212,11 @@ const CompatibilityChecker = () => {
         const targetBase = targetAvatarObj.base;
         
         // Check if we have compatibility data between these avatars
-        const hasCompatData = compatibilityMatrix[sourceBase] && 
-                              compatibilityMatrix[sourceBase][targetBase];
+        const hasCompatData = compatibilityData[sourceBase] && 
+                              compatibilityData[sourceBase][targetBase];
         
         if (hasCompatData) {
-          const compatData = compatibilityMatrix[sourceBase][targetBase];
+          const compatData = compatibilityData[sourceBase][targetBase];
           
           mockResults = {
             overall: getBestOverallStatus(compatData),
@@ -256,8 +278,11 @@ const CompatibilityChecker = () => {
       }
       
       setResults(mockResults);
+    } catch (error) {
+      console.error('Error checking compatibility:', error);
+    } finally {
       setLocalLoading(false);
-    }, 1500);
+    }
   };
 
   // Helper function to determine overall status based on compatibility data

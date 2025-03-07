@@ -59,10 +59,23 @@ export const ApiProvider = ({ children }) => {
     setErrors(prev => ({ ...prev, assets: null }));
     
     try {
+      // First fetch the favorited assets to get a reference
+      const favoritesResponse = await assetsAPI.getFavorites();
+      const favoriteAssets = favoritesResponse.data;
+      
+      // Create a Set of favorite asset IDs for quick lookup
+      const favoriteIds = new Set(favoriteAssets.map(asset => asset.id));
+      
       // Fetch all assets
       const allResponse = await assetsAPI.getAll();
-      const allAssets = allResponse.data;
-      setAssets(prev => ({ ...prev, all: allAssets }));
+      let allAssets = allResponse.data;
+      
+      // Make sure the favorited status is consistent with the favorites endpoint
+      allAssets = allAssets.map(asset => ({
+        ...asset,
+        // Override the favorited property based on presence in favorites
+        favorited: favoriteIds.has(asset.id)
+      }));
       
       // Categorize assets by type
       const clothing = allAssets.filter(asset => asset.type === 'Clothing');
@@ -71,23 +84,26 @@ export const ApiProvider = ({ children }) => {
       const textures = allAssets.filter(asset => asset.type === 'Texture');
       const animations = allAssets.filter(asset => asset.type === 'Animation');
       
-      // Get favorites
-      const favoritesResponse = await assetsAPI.getFavorites();
-      const favorites = favoritesResponse.data;
-      
       // Get recent assets
-      const recentResponse = await assetsAPI.getRecent(5);
-      const recent = recentResponse.data;
+      const recentResponse = await assetsAPI.getRecent(3);
+      let recentAssets = recentResponse.data;
+      
+      // Ensure recent assets have correct favorited status
+      recentAssets = recentAssets.map(asset => ({
+        ...asset,
+        favorited: favoriteIds.has(asset.id)
+      }));
       
       setAssets(prev => ({
         ...prev,
+        all: allAssets,
         clothing,
         props,
         accessories,
         textures,
         animations,
-        favorites,
-        recent
+        favorites: favoriteAssets,
+        recent: recentAssets
       }));
     } catch (error) {
       console.error('Error fetching assets:', error);
@@ -95,7 +111,7 @@ export const ApiProvider = ({ children }) => {
     } finally {
       setLoading(prev => ({ ...prev, assets: false }));
     }
-  }, []);
+  }, [assetsAPI]);
 
   // Fetch all collections
   const fetchCollections = useCallback(async () => {
@@ -147,30 +163,44 @@ export const ApiProvider = ({ children }) => {
       
       // Update assets state with the new favorite status
       setAssets(prev => {
-        const newAll = prev.all.map(asset =>
-          asset.id === assetId ? { ...asset, favorited: response.favorited } : asset
-        );
+        // Find the asset in the all array to get its full data
+        const assetToUpdate = prev.all.find(a => a.id === assetId);
+        if (!assetToUpdate) return prev; // Safety check
         
+        // Create updated asset with new favorite status
+        const updatedAsset = { 
+          ...assetToUpdate, 
+          favorited: response.favorited 
+        };
+        
+        // Update all asset categories including recent
         return {
           ...prev,
-          all: newAll,
+          all: prev.all.map(asset =>
+            asset.id === assetId ? updatedAsset : asset
+          ),
           clothing: prev.clothing.map(asset =>
-            asset.id === assetId ? { ...asset, favorited: response.favorited } : asset
+            asset.id === assetId ? updatedAsset : asset
           ),
           props: prev.props.map(asset =>
-            asset.id === assetId ? { ...asset, favorited: response.favorited } : asset
+            asset.id === assetId ? updatedAsset : asset
           ),
           accessories: prev.accessories.map(asset =>
-            asset.id === assetId ? { ...asset, favorited: response.favorited } : asset
+            asset.id === assetId ? updatedAsset : asset
           ),
           textures: prev.textures.map(asset =>
-            asset.id === assetId ? { ...asset, favorited: response.favorited } : asset
+            asset.id === assetId ? updatedAsset : asset
           ),
           animations: prev.animations.map(asset =>
-            asset.id === assetId ? { ...asset, favorited: response.favorited } : asset
+            asset.id === assetId ? updatedAsset : asset
           ),
+          // Important: Also update the recent array that's shown on Dashboard
+          recent: prev.recent.map(asset =>
+            asset.id === assetId ? updatedAsset : asset
+          ),
+          // Update favorites array - either add or remove the asset
           favorites: response.favorited
-            ? [...prev.favorites, newAll.find(a => a.id === assetId)]
+            ? [...prev.favorites.filter(a => a.id !== assetId), updatedAsset]
             : prev.favorites.filter(a => a.id !== assetId)
         };
       });

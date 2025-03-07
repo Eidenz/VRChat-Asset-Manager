@@ -170,12 +170,22 @@ async function getAssetCompatibleAvatars(assetId) {
  */
 async function createAsset(asset) {
   const { 
-    name, creator, description, thumbnail, fileSize, filePath, 
-    downloadUrl, version, type, notes, tags = [], compatibleWith = [] 
+    name, creator, description, fileSize, filePath, 
+    downloadUrl, version, type, notes, tags = [], compatibleWith = [],
+    serverUploadedImage // Add this to the destructuring
   } = asset;
+  
+  // Use serverUploadedImage if available, fallback to thumbnail
+  const thumbnail = serverUploadedImage || asset.thumbnail;
+  
+  console.log('Creating asset with thumbnail:', thumbnail);
+  console.log('(serverUploadedImage was:', serverUploadedImage, ')');
   
   const dateAdded = new Date().toISOString();
   const lastUsed = dateAdded;
+  
+  // Ensure favorited is properly converted to 0/1 for database
+  const favorited = asset.favorited ? 1 : 0;
   
   // Start a transaction
   await db.run('BEGIN TRANSACTION');
@@ -190,7 +200,7 @@ async function createAsset(asset) {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       name, creator, description, thumbnail, dateAdded, lastUsed,
-      fileSize, filePath, downloadUrl, version, type, asset.favorited ? 1 : 0, notes
+      fileSize, filePath, downloadUrl, version, type, favorited, notes
     ]);
     
     const assetId = result.lastID;
@@ -230,7 +240,7 @@ async function createAsset(asset) {
       downloadUrl,
       version,
       type,
-      favorited: asset.favorited || false,
+      favorited: Boolean(favorited), // Return as boolean
       notes,
       tags,
       compatibleWith
@@ -252,8 +262,11 @@ async function createAsset(asset) {
 async function updateAsset(id, asset) {
   const { 
     name, creator, description, thumbnail, fileSize, filePath, 
-    downloadUrl, version, type, notes, tags, compatibleWith, favorited 
+    downloadUrl, version, type, notes, tags, compatibleWith
   } = asset;
+  
+  // Ensure favorited is properly converted to 0/1 for database
+  const favorited = asset.favorited ? 1 : 0;
   
   // Start a transaction
   await db.run('BEGIN TRANSACTION');
@@ -285,7 +298,7 @@ async function updateAsset(id, asset) {
       version, 
       type, 
       notes, 
-      favorited ? 1 : 0, 
+      favorited, 
       id
     ]);
     
@@ -359,6 +372,7 @@ async function toggleFavorite(id) {
   const asset = await db.get('SELECT favorited FROM assets WHERE id = ?', [id]);
   if (!asset) throw new Error('Asset not found');
   
+  // Toggle from 0 to 1 or 1 to 0
   const newStatus = asset.favorited === 1 ? 0 : 1;
   
   const result = await db.run(`
@@ -369,7 +383,7 @@ async function toggleFavorite(id) {
   
   return {
     success: result.changes > 0,
-    favorited: newStatus === 1
+    favorited: newStatus === 1  // Return as boolean
   };
 }
 

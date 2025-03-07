@@ -1,5 +1,5 @@
 // src/components/ui/AssetCard.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Card, 
   CardMedia, 
@@ -99,9 +99,27 @@ const ActionButton = styled(Button)(({ theme, color }) => ({
   },
 }));
 
-const AssetCard = ({ asset }) => {
+const AssetCard = ({ asset: propAsset }) => {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
-  const { toggleAssetFavorite } = useApi();
+  const { toggleAssetFavorite, assets } = useApi();
+  
+  // Keep a local copy of the asset that can update when the global state changes
+  const [asset, setAsset] = useState(propAsset);
+  
+  // Update local asset when the prop changes or when assets state changes
+  useEffect(() => {
+    setAsset(propAsset);
+  }, [propAsset]);
+  
+  // Find and update the local asset if it changes in the global state
+  useEffect(() => {
+    if (asset && assets.all) {
+      const updatedAsset = assets.all.find(a => a.id === asset.id);
+      if (updatedAsset) {
+        setAsset(updatedAsset);
+      }
+    }
+  }, [assets, asset]);
   
   const handleToggleFavorite = (e) => {
     e.stopPropagation();
@@ -130,6 +148,8 @@ const AssetCard = ({ asset }) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
+  
+  if (!asset) return null;
   
   return (
     <>

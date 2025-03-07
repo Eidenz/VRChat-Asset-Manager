@@ -1,4 +1,4 @@
-// server/server.js - Express server
+// server/server.js - Updated with uploads routes
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -11,6 +11,7 @@ const avatarsRoutes = require('./routes/avatars');
 const assetsRoutes = require('./routes/assets');
 const collectionsRoutes = require('./routes/collections');
 const settingsRoutes = require('./routes/settings');
+const uploadsRoutes = require('./routes/uploads');
 
 // Create Express app
 const app = express();
@@ -24,11 +25,15 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // API routes
 app.use('/api/avatars', avatarsRoutes);
 app.use('/api/assets', assetsRoutes);
 app.use('/api/collections', collectionsRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/uploads', uploadsRoutes);
 
 // Serve static files from the React app in production
 if (process.env.NODE_ENV === 'production') {
