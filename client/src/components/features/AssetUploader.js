@@ -15,7 +15,6 @@ import {
   Chip,
   OutlinedInput,
   Checkbox,
-  FormControlLabel,
   Grid,
   CircularProgress,
   Alert,
@@ -24,6 +23,7 @@ import {
   DialogContent,
   DialogActions,
   Paper,
+  Dialog,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
@@ -32,6 +32,8 @@ import LinkIcon from '@mui/icons-material/Link';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ImageIcon from '@mui/icons-material/Image';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
+import { Divider } from '@mui/material';
 
 // Import API context and upload service
 import { useApi } from '../../context/ApiContext';
@@ -117,6 +119,8 @@ const AssetUploader = ({ onClose }) => {
   const [imagePreview, setImagePreview] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef(null);
+  const [showNewTagInput, setShowNewTagInput] = useState(false);
+  const [newTagValue, setNewTagValue] = useState('');
   
   // Get data and functions from API context
   const { assetsAPI, avatarsAPI, fetchAssets } = useApi();
@@ -187,6 +191,27 @@ const AssetUploader = ({ onClose }) => {
 
   const handleBack = () => {
     setActiveStep((prevStep) => prevStep - 1);
+  };
+
+  const handleAddNewTag = () => {
+    if (newTagValue && !assetData.tags.includes(newTagValue)) {
+      // Add new tag to assetData
+      setAssetData(prev => ({
+        ...prev,
+        tags: [...prev.tags, newTagValue]
+      }));
+      
+      // Add to available tags if not already there
+      if (!assetTags.some(tag => 
+        (typeof tag === 'object' ? tag.name === newTagValue : tag === newTagValue)
+      )) {
+        setAssetTags(prev => [...prev, newTagValue]);
+      }
+      
+      // Reset input
+      setNewTagValue('');
+      setShowNewTagInput(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -492,7 +517,7 @@ const AssetUploader = ({ onClose }) => {
                   
                   <Grid item xs={12} sm={6}>
                     <FormControl fullWidth>
-                      <InputLabel>Asset Type</InputLabel>
+                      <InputLabel required>Asset Type</InputLabel>
                       <Select
                         name="type"
                         value={assetData.type}
@@ -540,31 +565,43 @@ const AssetUploader = ({ onClose }) => {
                   </Grid>
                   
                   <Grid item xs={12}>
-                    <FormControl fullWidth>
-                      <InputLabel>Tags</InputLabel>
-                      <Select
-                        multiple
-                        name="tags"
-                        value={assetData.tags}
-                        onChange={handleTagsChange}
-                        input={<OutlinedInput label="Tags" />}
-                        renderValue={(selected) => (
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {selected.map((value) => (
-                              <Chip key={value} label={value} />
-                            ))}
-                          </Box>
-                        )}
-                        MenuProps={MenuProps}
+                  <FormControl fullWidth>
+                    <InputLabel>Tags</InputLabel>
+                    <Select
+                      multiple
+                      name="tags"
+                      value={assetData.tags}
+                      onChange={handleTagsChange}
+                      input={<OutlinedInput label="Tags" />}
+                      renderValue={(selected) => (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {selected.map((value) => (
+                            <Chip key={value} label={value} />
+                          ))}
+                        </Box>
+                      )}
+                      MenuProps={MenuProps}
+                    >
+                      {assetTags.map((tag) => (
+                        <MenuItem key={typeof tag === 'object' ? tag.id : tag} value={typeof tag === 'object' ? tag.name : tag}>
+                          <Checkbox checked={assetData.tags.indexOf(typeof tag === 'object' ? tag.name : tag) > -1} />
+                          {typeof tag === 'object' ? tag.name : tag}
+                        </MenuItem>
+                      ))}
+                      <Divider sx={{ my: 1 }} />
+                      <MenuItem 
+                        sx={{ fontStyle: 'italic', color: 'primary.main' }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setShowNewTagInput(true);
+                        }}
                       >
-                        {assetTags.map((tag) => (
-                          <MenuItem key={typeof tag === 'object' ? tag.id : tag} value={typeof tag === 'object' ? tag.name : tag}>
-                            <Checkbox checked={assetData.tags.indexOf(typeof tag === 'object' ? tag.name : tag) > -1} />
-                            {typeof tag === 'object' ? tag.name : tag}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                        <AddIcon fontSize="small" sx={{ mr: 1 }} />
+                        Add new tag
+                      </MenuItem>
+                    </Select>
+                  </FormControl>
                   </Grid>
                   
                   <Grid item xs={12}>
@@ -801,6 +838,34 @@ const AssetUploader = ({ onClose }) => {
           </Button>
         )}
       </DialogActions>
+
+      <Dialog open={showNewTagInput} onClose={() => setShowNewTagInput(false)}>
+        <DialogTitle>Add New Tag</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Tag Name"
+            fullWidth
+            value={newTagValue}
+            onChange={(e) => setNewTagValue(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && newTagValue && !assetData.tags.includes(newTagValue)) {
+                handleAddNewTag();
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowNewTagInput(false)}>Cancel</Button>
+          <Button 
+            onClick={handleAddNewTag}
+            disabled={!newTagValue || assetData.tags.includes(newTagValue)}
+          >
+            Add
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

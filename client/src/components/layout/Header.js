@@ -1,6 +1,6 @@
 // src/components/layout/Header.js
 import React, { useState } from 'react';
-import { Box, InputBase, IconButton, Avatar, Tooltip, Dialog } from '@mui/material';
+import { Box, InputBase, IconButton, Tooltip, Dialog } from '@mui/material';
 import { styled, alpha } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -107,20 +107,6 @@ const Header = () => {
               {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
             </HeaderButton>
           </Tooltip>
-          
-          <Avatar 
-            sx={{ 
-              width: 36, 
-              height: 36, 
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                boxShadow: '0 0 0 2px #7e4dd2',
-              } 
-            }} 
-            alt="User profile" 
-            src="/placeholder-avatar.jpg" 
-          />
         </Box>
       </Box>
       

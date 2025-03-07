@@ -31,13 +31,10 @@ import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import HistoryIcon from '@mui/icons-material/History';
-import DescriptionIcon from '@mui/icons-material/Description';
-import StorageIcon from '@mui/icons-material/Storage';
-import AccountTreeIcon from '@mui/icons-material/AccountTree';
-import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LinkIcon from '@mui/icons-material/Link';
 import { styled } from '@mui/material/styles';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 // Import API context
 import { useApi } from '../../context/ApiContext';
@@ -72,8 +69,10 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [localAsset, setLocalAsset] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   
-  const { toggleAssetFavorite, assetsAPI, updateAssetLastUsed, assets } = useApi();
+  const { toggleAssetFavorite, assetsAPI, updateAssetLastUsed, assets, deleteAsset } = useApi();
 
   // Use localAsset to ensure we always show the latest data
   useEffect(() => {
@@ -163,6 +162,27 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
     } else {
       console.log('No download URL available');
       alert('No download URL available for this asset');
+    }
+  };
+
+  const handleOpenDeleteConfirm = () => {
+    setDeleteConfirmOpen(true);
+  };
+  
+  const handleCloseDeleteConfirm = () => {
+    setDeleteConfirmOpen(false);
+  };
+  
+  const handleDeleteAsset = async () => {
+    setDeleting(true);
+    try {
+      await deleteAsset(localAsset.id);
+      handleCloseDeleteConfirm();
+      handleClose(); // Close the details modal
+    } catch (error) {
+      console.error('Error deleting asset:', error);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -459,8 +479,38 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
         >
           Copy Path
         </Button>
+        <Button 
+          startIcon={<DeleteIcon />} 
+          color="error" 
+          onClick={handleOpenDeleteConfirm}
+        >
+          Delete
+        </Button>
         <Button onClick={handleClose} sx={{ color: 'text.secondary' }}>Close</Button>
       </DialogActions>
+
+      // Add delete confirmation dialog - add this at the end of the component, before the final return:
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={handleCloseDeleteConfirm}
+      >
+        <DialogTitle>Delete Asset</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete "{localAsset?.name}"? This will remove it from your library.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteConfirm}>Cancel</Button>
+          <Button 
+            color="error" 
+            onClick={handleDeleteAsset}
+            disabled={deleting}
+          >
+            {deleting ? <CircularProgress size={24} /> : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   );
 };

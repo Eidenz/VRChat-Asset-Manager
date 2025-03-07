@@ -34,14 +34,13 @@ import SortIcon from '@mui/icons-material/Sort';
 import FolderIcon from '@mui/icons-material/Folder';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import ViewListIcon from '@mui/icons-material/ViewList';
-import LayersIcon from '@mui/icons-material/Layers';
 
 // Import API context
 import { useApi } from '../context/ApiContext';
 
 const Collections = () => {
   const navigate = useNavigate();
-  const { collections, loading, errors, createCollection, collectionsAPI } = useApi();
+  const { collections, loading, errors, createCollection, collectionsAPI, fetchCollections } = useApi();
   
   const [currentCollection, setCurrentCollection] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -128,10 +127,10 @@ const Collections = () => {
       setError('Collection name is required');
       return;
     }
-
+  
     setSubmitting(true);
     setError('');
-
+  
     try {
       if (isEditing) {
         // Update existing collection
@@ -140,16 +139,19 @@ const Collections = () => {
           // Preserve the thumbnail if not provided in form
           thumbnail: currentCollection.thumbnail
         });
+        
+        // Add this line to refresh collections after updating
+        await fetchCollections();
       } else {
-        // Generate a random placeholder thumbnail URL
+        // Create new collection
         const randomId = Math.floor(Math.random() * 200);
         const thumbnail = `https://picsum.photos/id/${randomId}/220/120`;
         
-        // Create new collection
         await createCollection({
           ...formData,
           thumbnail
         });
+        // No need to call fetchCollections here as createCollection already updates the state
       }
       
       handleCloseDialog();
@@ -175,6 +177,10 @@ const Collections = () => {
     
     try {
       await collectionsAPI.delete(currentCollection.id);
+      
+      // Add this line to refresh collections data
+      await fetchCollections();
+      
       setDeleteConfirmOpen(false);
       setCurrentCollection(null);
     } catch (err) {

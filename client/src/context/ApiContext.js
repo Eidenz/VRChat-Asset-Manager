@@ -306,6 +306,33 @@ export const ApiProvider = ({ children }) => {
     }
   };
 
+  const deleteAsset = async (assetId) => {
+    try {
+      await assetsAPI.delete(assetId);
+      
+      // Update assets state by removing the deleted asset
+      setAssets(prev => {
+        const updatedAll = prev.all.filter(asset => asset.id !== assetId);
+        return {
+          ...prev,
+          all: updatedAll,
+          clothing: prev.clothing.filter(asset => asset.id !== assetId),
+          props: prev.props.filter(asset => asset.id !== assetId),
+          accessories: prev.accessories.filter(asset => asset.id !== assetId),
+          textures: prev.textures.filter(asset => asset.id !== assetId),
+          animations: prev.animations.filter(asset => asset.id !== assetId),
+          favorites: prev.favorites.filter(asset => asset.id !== assetId),
+          recent: prev.recent.filter(asset => asset.id !== assetId)
+        };
+      });
+      
+      return true;
+    } catch (error) {
+      console.error(`Error deleting asset ${assetId}:`, error);
+      throw error;
+    }
+  };
+
   // Load all data on initial mount
   useEffect(() => {
     fetchAvatars();
@@ -341,6 +368,7 @@ export const ApiProvider = ({ children }) => {
     removeAssetFromCollection,
     createCollection,
     updateSettings,
+    deleteAsset,
     
     // API services
     avatarsAPI,
