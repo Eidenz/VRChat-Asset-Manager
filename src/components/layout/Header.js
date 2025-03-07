@@ -1,12 +1,13 @@
 // src/components/layout/Header.js
-import React from 'react';
-import { Box, InputBase, IconButton, Avatar, Tooltip } from '@mui/material';
+import React, { useState } from 'react';
+import { Box, InputBase, IconButton, Avatar, Tooltip, Dialog } from '@mui/material';
 import { styled, alpha } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { useTheme } from '../../context/ThemeContext';
+import AssetUploader from '../features/AssetUploader';
 
 // Styled search input
 const Search = styled('div')(({ theme }) => ({
@@ -63,53 +64,76 @@ const HeaderButton = styled(IconButton)(({ theme }) => ({
 
 const Header = () => {
   const { mode, toggleTheme } = useTheme();
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  
+  const handleOpenImportModal = () => {
+    setImportModalOpen(true);
+  };
+  
+  const handleCloseImportModal = () => {
+    setImportModalOpen(false);
+  };
 
   return (
-    <Box sx={{ 
-      gridArea: 'header',
-      backgroundColor: 'background.default',
-      display: 'flex',
-      alignItems: 'center',
-      px: 3,
-      justifyContent: 'space-between',
-      borderBottom: '1px solid rgba(255,255,255,0.05)',
-    }} className="fade-in">
-      <Search>
-        <SearchIconWrapper>
-          <SearchIcon />
-        </SearchIconWrapper>
-        <StyledInputBase
-          placeholder="Search assets, creators, collections..."
-          inputProps={{ 'aria-label': 'search' }}
-        />
-      </Search>
-      
-      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-        <Tooltip title={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}>
-          <HeaderButton onClick={toggleTheme} aria-label="toggle theme">
-            {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
-          </HeaderButton>
-        </Tooltip>
-        <Tooltip title="Add New">
-          <HeaderButton aria-label="add new">
-            <AddIcon />
-          </HeaderButton>
-        </Tooltip>
-        <Avatar 
-          sx={{ 
-            width: 36, 
-            height: 36, 
-            cursor: 'pointer',
-            transition: 'all 0.3s ease',
-            '&:hover': {
-              boxShadow: '0 0 0 2px #7e4dd2',
-            } 
-          }} 
-          alt="User profile" 
-          src="/placeholder-avatar.jpg" 
-        />
+    <>
+      <Box sx={{ 
+        gridArea: 'header',
+        backgroundColor: 'background.default',
+        display: 'flex',
+        alignItems: 'center',
+        px: 3,
+        justifyContent: 'space-between',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+      }} className="fade-in">
+        <Search>
+          <SearchIconWrapper>
+            <SearchIcon />
+          </SearchIconWrapper>
+          <StyledInputBase
+            placeholder="Search assets, creators, collections..."
+            inputProps={{ 'aria-label': 'search' }}
+          />
+        </Search>
+        
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Tooltip title="Add New Asset">
+            <HeaderButton aria-label="add new" onClick={handleOpenImportModal}>
+              <AddIcon />
+            </HeaderButton>
+          </Tooltip>
+          
+          <Tooltip title={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}>
+            <HeaderButton onClick={toggleTheme} aria-label="toggle theme">
+              {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+            </HeaderButton>
+          </Tooltip>
+          
+          <Avatar 
+            sx={{ 
+              width: 36, 
+              height: 36, 
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                boxShadow: '0 0 0 2px #7e4dd2',
+              } 
+            }} 
+            alt="User profile" 
+            src="/placeholder-avatar.jpg" 
+          />
+        </Box>
       </Box>
-    </Box>
+      
+      {/* Import Modal */}
+      <Dialog
+        open={importModalOpen}
+        onClose={handleCloseImportModal}
+        fullWidth
+        maxWidth="md"
+      >
+        <AssetUploader onClose={handleCloseImportModal} />
+      </Dialog>
+    </>
   );
 };
 

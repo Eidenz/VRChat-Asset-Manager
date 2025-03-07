@@ -14,7 +14,7 @@ import {
 import { styled } from '@mui/material/styles';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import DownloadIcon from '@mui/icons-material/Download';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -113,11 +113,14 @@ const AssetCard = ({ asset }) => {
     setDetailsModalOpen(false);
   };
 
-  const openFolder = (e) => {
+  const handleDownload = (e) => {
     e.stopPropagation();
-    // In a real app, you might integrate with the OS to open the folder
-    console.log(`Opening folder: ${asset.filePath}`);
-    alert(`In a real app, this would open: ${asset.filePath}`);
+    if (asset.downloadUrl) {
+      window.open(asset.downloadUrl, '_blank');
+    } else {
+      console.log('No download URL available');
+      alert('No download URL available for this asset');
+    }
   };
 
   const formatDate = (dateString) => {
@@ -190,15 +193,15 @@ const AssetCard = ({ asset }) => {
           </Box>
           
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Tooltip title={asset.filePath}>
+            <Tooltip title="Download from original source">
               <ActionButton 
                 fullWidth 
                 variant="contained" 
                 color="primary"
-                startIcon={<FolderOpenIcon />}
-                onClick={openFolder}
+                startIcon={<DownloadIcon />}
+                onClick={handleDownload}
               >
-                Open
+                Download
               </ActionButton>
             </Tooltip>
             <ActionButton 

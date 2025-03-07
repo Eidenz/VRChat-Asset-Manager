@@ -24,7 +24,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import DownloadIcon from '@mui/icons-material/Download';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
@@ -35,6 +35,7 @@ import StorageIcon from '@mui/icons-material/Storage';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import LinkIcon from '@mui/icons-material/Link';
 import { styled } from '@mui/material/styles';
 
 const StyledChip = styled(Chip)(({ theme }) => ({
@@ -102,10 +103,13 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
     });
   };
 
-  const openFolder = () => {
-    // In a real app, you might integrate with the OS to open the folder
-    console.log(`Opening folder: ${asset.filePath}`);
-    alert(`In a real app, this would open: ${asset.filePath}`);
+  const handleDownload = () => {
+    if (asset.downloadUrl) {
+      window.open(asset.downloadUrl, '_blank');
+    } else {
+      console.log('No download URL available');
+      alert('No download URL available for this asset');
+    }
   };
 
   return (
@@ -146,10 +150,10 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
               <Button 
                 variant="contained" 
                 fullWidth
-                startIcon={<FolderOpenIcon />}
-                onClick={openFolder}
+                startIcon={<DownloadIcon />}
+                onClick={handleDownload}
               >
-                Open File Location
+                Download Asset
               </Button>
               <Button
                 variant="outlined"
@@ -216,7 +220,7 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
                   <Typography variant="body2">{asset.version}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2">Path:</Typography>
+                  <Typography variant="body2">Local Path:</Typography>
                   <Tooltip title={asset.filePath}>
                     <Typography 
                       variant="body2" 
@@ -230,6 +234,29 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
                       onClick={() => {navigator.clipboard.writeText(asset.filePath)}}
                     >
                       {asset.filePath}
+                    </Typography>
+                  </Tooltip>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2">Download URL:</Typography>
+                  <Tooltip title={asset.downloadUrl}>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        maxWidth: '250px', 
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        cursor: 'pointer',
+                        color: 'primary.main',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5
+                      }}
+                      onClick={() => {window.open(asset.downloadUrl, '_blank')}}
+                    >
+                      <LinkIcon fontSize="small" />
+                      Original Source
                     </Typography>
                   </Tooltip>
                 </Box>

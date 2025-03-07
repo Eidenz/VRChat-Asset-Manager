@@ -10,10 +10,6 @@ import BrushIcon from '@mui/icons-material/Brush';
 import PersonIcon from '@mui/icons-material/Person';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import LayersIcon from '@mui/icons-material/Layers';
-import DownloadIcon from '@mui/icons-material/Download';
-import HistoryIcon from '@mui/icons-material/History';
-import UploadIcon from '@mui/icons-material/Upload';
-import SyncIcon from '@mui/icons-material/Sync';
 import SettingsIcon from '@mui/icons-material/Settings';
 
 // Custom styled NavLink component
@@ -128,37 +124,13 @@ const Sidebar = () => {
               <ListItemText primary="Collections" />
             </StyledNavLink>
           </ListItem>
-          <ListItem disablePadding>
-            <StyledNavLink to="/downloads">
-              <ListItemIcon sx={{ minWidth: 36 }}><DownloadIcon /></ListItemIcon>
-              <ListItemText primary="Downloads" />
-            </StyledNavLink>
-          </ListItem>
-          <ListItem disablePadding>
-            <StyledNavLink to="/recent">
-              <ListItemIcon sx={{ minWidth: 36 }}><HistoryIcon /></ListItemIcon>
-              <ListItemText primary="Recently Viewed" />
-            </StyledNavLink>
-          </ListItem>
         </List>
       </Box>
       
-      {/* Tools Navigation */}
+      {/* Settings */}
       <Box>
-        <SectionTitle>Tools</SectionTitle>
+        <SectionTitle>Settings</SectionTitle>
         <List disablePadding>
-          <ListItem disablePadding>
-            <StyledNavLink to="/import">
-              <ListItemIcon sx={{ minWidth: 36 }}><UploadIcon /></ListItemIcon>
-              <ListItemText primary="Import Assets" />
-            </StyledNavLink>
-          </ListItem>
-          <ListItem disablePadding>
-            <StyledNavLink to="/sync">
-              <ListItemIcon sx={{ minWidth: 36 }}><SyncIcon /></ListItemIcon>
-              <ListItemText primary="Sync with VRChat" />
-            </StyledNavLink>
-          </ListItem>
           <ListItem disablePadding>
             <StyledNavLink to="/settings">
               <ListItemIcon sx={{ minWidth: 36 }}><SettingsIcon /></ListItemIcon>

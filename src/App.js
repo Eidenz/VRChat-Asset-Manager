@@ -1,8 +1,12 @@
+// src/App.js
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { CssBaseline } from '@mui/material';
 import { ThemeProvider } from './context/ThemeContext';
-import './styles/global.css';
+import './styles/globals.css';
+
+// Layout
+import MainLayout from './components/layout/MainLayout';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -12,11 +16,8 @@ import Textures from './pages/Textures';
 import Avatars from './pages/Avatars';
 import Favorites from './pages/Favorites';
 import Collections from './pages/Collections';
+import CollectionDetail from './pages/CollectionDetail';
 import Settings from './pages/Settings';
-import Import from './pages/Import';
-
-// Layout
-import MainLayout from './components/layout/MainLayout';
 
 function App() {
   return (
@@ -32,7 +33,7 @@ function App() {
             <Route path="avatars" element={<Avatars />} />
             <Route path="favorites" element={<Favorites />} />
             <Route path="collections" element={<Collections />} />
-            <Route path="import" element={<Import />} />
+            <Route path="collections/:id" element={<CollectionDetail />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
