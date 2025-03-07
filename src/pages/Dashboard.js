@@ -6,6 +6,7 @@ import SectionHeader from '../components/ui/SectionHeader';
 import AssetCard from '../components/ui/AssetCard';
 import CollectionCard from '../components/ui/CollectionCard';
 import AvatarCard from '../components/ui/AvatarCard';
+import CompatibilityChecker from '../components/features/CompatibilityChecker';
 
 // Import mock data
 import { collections, avatars, recentAssets } from '../data/mockData';
@@ -80,18 +81,7 @@ const Dashboard = () => {
         transition={{ duration: 0.5, delay: 0.4 }}
       >
         <Box sx={{ mb: 5 }}>
-          <SectionHeader title="Compatibility Checker" />
-          <Paper sx={{ p: 3, bgcolor: 'background.paper', borderRadius: 3 }}>
-            <Typography sx={{ mb: 2 }}>
-              Check if an asset is compatible with your avatar base:
-            </Typography>
-            {/* Add compatibility checker UI here */}
-            <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 2, mb: 2 }}>
-              <Typography variant="body2" color="text.secondary">
-                Coming Soon: Our compatibility checker will help you determine if assets will work with your specific avatar base.
-              </Typography>
-            </Box>
-          </Paper>
+          <CompatibilityChecker />
         </Box>
       </motion.div>
     </Box>

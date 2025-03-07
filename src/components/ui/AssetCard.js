@@ -8,14 +8,18 @@ import {
   Box, 
   Chip, 
   Button,
-  IconButton
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import DownloadIcon from '@mui/icons-material/Download';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import EditNoteIcon from '@mui/icons-material/EditNote';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { motion } from 'framer-motion';
+import AssetDetailsModal from './AssetDetailsModal';
 
 // Styled components
 const StyledCard = styled(motion(Card))(({ theme }) => ({
@@ -71,18 +75,13 @@ const StyledTag = styled(Chip)(({ theme }) => ({
   },
 }));
 
-const StatsContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  justifyContent: 'space-between',
-  marginBottom: 16,
-}));
-
-const StatItem = styled(Box)(({ theme }) => ({
+const InfoRow = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   gap: 6,
   fontSize: 13,
   color: theme.palette.text.secondary,
+  marginBottom: 6,
 }));
 
 const ActionButton = styled(Button)(({ theme, color }) => ({
@@ -98,89 +97,128 @@ const ActionButton = styled(Button)(({ theme, color }) => ({
 }));
 
 const AssetCard = ({ asset }) => {
-  const [isFavorite, setIsFavorite] = useState(asset.isFavorite || false);
+  const [isFavorite, setIsFavorite] = useState(asset.favorited || false);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   
   const handleToggleFavorite = (e) => {
     e.stopPropagation();
     setIsFavorite(!isFavorite);
   };
   
+  const handleOpenDetails = () => {
+    setDetailsModalOpen(true);
+  };
+
+  const handleCloseDetails = () => {
+    setDetailsModalOpen(false);
+  };
+
+  const openFolder = (e) => {
+    e.stopPropagation();
+    // In a real app, you might integrate with the OS to open the folder
+    console.log(`Opening folder: ${asset.filePath}`);
+    alert(`In a real app, this would open: ${asset.filePath}`);
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+  
   return (
-    <StyledCard
-      whileHover={{ 
-        y: -5,
-        boxShadow: '0 10px 20px rgba(0,0,0,0.2)' 
-      }}
-    >
-      <Box sx={{ position: 'relative' }}>
-        <CardMedia
-          component="img"
-          height="200"
-          image={asset.thumbnail}
-          alt={asset.name}
-          sx={{ 
-            transition: 'transform 0.5s ease',
-            '&:hover': {
-              transform: 'scale(1.05)',
-            }
-          }}
-        />
-        {asset.badge && <StyledBadge>{asset.badge}</StyledBadge>}
-        <StyledFavoriteButton 
-          size="small" 
-          active={isFavorite ? 1 : 0}
-          onClick={handleToggleFavorite}
-          aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-        >
-          {isFavorite ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
-        </StyledFavoriteButton>
-      </Box>
-      
-      <CardContent sx={{ flexGrow: 1 }}>
-        <Typography variant="h3" sx={{ mb: 0.5 }}>{asset.name}</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-          By: {asset.creator}
-        </Typography>
-        
-        <TagsContainer>
-          {asset.tags.map((tag, index) => (
-            <StyledTag key={index} label={tag} size="small" />
-          ))}
-        </TagsContainer>
-        
-        <StatsContainer>
-          <StatItem>
-            <DownloadIcon fontSize="small" />
-            {asset.downloads}
-          </StatItem>
-          <StatItem>
-            <FavoriteIcon fontSize="small" />
-            {asset.favorites}
-          </StatItem>
-          <StatItem>
-            ★ {asset.rating}
-          </StatItem>
-        </StatsContainer>
-        
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <ActionButton 
-            fullWidth 
-            variant="contained" 
-            color="primary"
-            startIcon={<DownloadIcon />}
+    <>
+      <StyledCard
+        whileHover={{ 
+          y: -5,
+          boxShadow: '0 10px 20px rgba(0,0,0,0.2)' 
+        }}
+      >
+        <Box sx={{ position: 'relative' }}>
+          <CardMedia
+            component="img"
+            height="200"
+            image={asset.thumbnail}
+            alt={asset.name}
+            sx={{ 
+              transition: 'transform 0.5s ease',
+              '&:hover': {
+                transform: 'scale(1.05)',
+              }
+            }}
+          />
+          {asset.type && (
+            <StyledBadge>{asset.type}</StyledBadge>
+          )}
+          <StyledFavoriteButton 
+            size="small" 
+            active={isFavorite ? 1 : 0}
+            onClick={handleToggleFavorite}
+            aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
           >
-            Download
-          </ActionButton>
-          <ActionButton 
-            fullWidth 
-            variant="contained" 
-            startIcon={<InfoOutlinedIcon />}
-          >
-            Details
-          </ActionButton>
+            {isFavorite ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
+          </StyledFavoriteButton>
         </Box>
-      </CardContent>
-    </StyledCard>
+        
+        <CardContent sx={{ flexGrow: 1 }}>
+          <Typography variant="h3" sx={{ mb: 0.5 }}>{asset.name}</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            By: {asset.creator}
+          </Typography>
+          
+          <TagsContainer>
+            {asset.tags.slice(0, 3).map((tag, index) => (
+              <StyledTag key={index} label={tag} size="small" />
+            ))}
+            {asset.tags.length > 3 && (
+              <StyledTag label={`+${asset.tags.length - 3}`} size="small" />
+            )}
+          </TagsContainer>
+          
+          <Box sx={{ mb: 2 }}>
+            <InfoRow>
+              <CalendarTodayIcon fontSize="small" />
+              <Typography variant="body2">
+                Added: {formatDate(asset.dateAdded)}
+              </Typography>
+            </InfoRow>
+            <InfoRow>
+              <EditNoteIcon fontSize="small" />
+              <Typography variant="body2" noWrap title={asset.notes}>
+                {asset.notes.length > 30 ? `${asset.notes.substring(0, 30)}...` : asset.notes}
+              </Typography>
+            </InfoRow>
+          </Box>
+          
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Tooltip title={asset.filePath}>
+              <ActionButton 
+                fullWidth 
+                variant="contained" 
+                color="primary"
+                startIcon={<FolderOpenIcon />}
+                onClick={openFolder}
+              >
+                Open
+              </ActionButton>
+            </Tooltip>
+            <ActionButton 
+              fullWidth 
+              variant="contained" 
+              startIcon={<InfoOutlinedIcon />}
+              onClick={handleOpenDetails}
+            >
+              Details
+            </ActionButton>
+          </Box>
+        </CardContent>
+      </StyledCard>
+
+      <AssetDetailsModal 
+        open={detailsModalOpen} 
+        handleClose={handleCloseDetails} 
+        asset={asset} 
+      />
+    </>
   );
 };
 

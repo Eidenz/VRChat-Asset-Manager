@@ -1,8 +1,7 @@
-// src/App.js
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { ThemeProvider, CssBaseline } from '@mui/material';
-import theme from './styles/theme';
+import { CssBaseline } from '@mui/material';
+import { ThemeProvider } from './context/ThemeContext';
 import './styles/global.css';
 
 // Pages
@@ -14,13 +13,14 @@ import Avatars from './pages/Avatars';
 import Favorites from './pages/Favorites';
 import Collections from './pages/Collections';
 import Settings from './pages/Settings';
+import Import from './pages/Import';
 
 // Layout
 import MainLayout from './components/layout/MainLayout';
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider>
       <CssBaseline />
       <BrowserRouter>
         <Routes>
@@ -32,6 +32,7 @@ function App() {
             <Route path="avatars" element={<Avatars />} />
             <Route path="favorites" element={<Favorites />} />
             <Route path="collections" element={<Collections />} />
+            <Route path="import" element={<Import />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>

@@ -3,8 +3,10 @@ import React from 'react';
 import { Box, InputBase, IconButton, Avatar, Tooltip } from '@mui/material';
 import { styled, alpha } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
-import NotificationsIcon from '@mui/icons-material/Notifications';
 import AddIcon from '@mui/icons-material/Add';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
+import { useTheme } from '../../context/ThemeContext';
 
 // Styled search input
 const Search = styled('div')(({ theme }) => ({
@@ -60,6 +62,8 @@ const HeaderButton = styled(IconButton)(({ theme }) => ({
 }));
 
 const Header = () => {
+  const { mode, toggleTheme } = useTheme();
+
   return (
     <Box sx={{ 
       gridArea: 'header',
@@ -81,9 +85,9 @@ const Header = () => {
       </Search>
       
       <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-        <Tooltip title="Notifications">
-          <HeaderButton aria-label="notifications">
-            <NotificationsIcon />
+        <Tooltip title={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}>
+          <HeaderButton onClick={toggleTheme} aria-label="toggle theme">
+            {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
           </HeaderButton>
         </Tooltip>
         <Tooltip title="Add New">
