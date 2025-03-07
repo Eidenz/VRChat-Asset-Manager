@@ -1,5 +1,5 @@
 // src/components/features/AssetUploader.js
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -25,40 +25,14 @@ import {
   DialogActions,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import LinkIcon from '@mui/icons-material/Link';
 
 // Import types and compatibility data from mock data
 import { assetTypes, avatarBases, assetTags } from '../../data/mockData';
 
-const steps = ['Asset Details', 'Upload Files', 'Compatibility', 'Review'];
-
-const UploadBox = styled(Box)(({ theme }) => ({
-  border: `2px dashed rgba(255, 255, 255, 0.2)`,
-  borderRadius: theme.shape.borderRadius,
-  padding: theme.spacing(4),
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  cursor: 'pointer',
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    borderColor: theme.palette.primary.main,
-    backgroundColor: 'rgba(126, 77, 210, 0.05)',
-  },
-}));
-
-const FileItem = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: theme.spacing(1.5),
-  marginBottom: theme.spacing(1),
-  backgroundColor: 'rgba(255,255,255,0.05)',
-  borderRadius: theme.shape.borderRadius,
-}));
+const steps = ['Asset Details', 'Compatibility', 'Review'];
 
 const ITEM_HEIGHT = 48;
 const ITEM_PADDING_TOP = 8;
@@ -72,7 +46,6 @@ const MenuProps = {
 
 const AssetUploader = ({ onClose }) => {
   const [activeStep, setActiveStep] = useState(0);
-  const [files, setFiles] = useState([]);
   const [assetData, setAssetData] = useState({
     name: '',
     description: '',
@@ -86,31 +59,6 @@ const AssetUploader = ({ onClose }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadError, setUploadError] = useState('');
-  
-  const fileInputRef = useRef(null);
-
-  const handleFileChange = (event) => {
-    const newFiles = Array.from(event.target.files).map(file => ({
-      file,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      preview: URL.createObjectURL(file)
-    }));
-    
-    setFiles([...files, ...newFiles]);
-  };
-  
-  const handleUploadClick = () => {
-    fileInputRef.current.click();
-  };
-
-  const removeFile = (index) => {
-    const newFiles = [...files];
-    URL.revokeObjectURL(newFiles[index].preview);
-    newFiles.splice(index, 1);
-    setFiles(newFiles);
-  };
 
   const handleNext = () => {
     setActiveStep((prevStep) => prevStep + 1);
@@ -167,7 +115,6 @@ const AssetUploader = ({ onClose }) => {
 
   const handleReset = () => {
     setActiveStep(0);
-    setFiles([]);
     setAssetData({
       name: '',
       description: '',
@@ -256,7 +203,13 @@ const AssetUploader = ({ onClose }) => {
                   value={assetData.downloadUrl}
                   onChange={handleChange}
                   placeholder="https://example.com/asset"
-                  helperText="Where can this asset be downloaded from?"
+                  required
+                  helperText="URL where this asset can be downloaded from"
+                  InputProps={{
+                    startAdornment: (
+                      <LinkIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                    ),
+                  }}
                 />
               </Grid>
               
@@ -318,85 +271,6 @@ const AssetUploader = ({ onClose }) => {
         
         {activeStep === 1 && (
           <Box>
-            <Typography variant="h3" sx={{ mb: 2 }}>Upload Files (Optional)</Typography>
-            <Typography variant="body1" sx={{ mb: 3 }}>
-              If you have local copies of this asset, you can upload them here for easy access. This is optional if you've provided a download URL.
-            </Typography>
-            
-            <input
-              type="file"
-              multiple
-              ref={fileInputRef}
-              style={{ display: 'none' }}
-              onChange={handleFileChange}
-              accept=".zip,.unitypackage,image/*,.fbx,.gltf,.glb"
-            />
-            
-            <UploadBox onClick={handleUploadClick}>
-              <CloudUploadIcon fontSize="large" sx={{ mb: 2 }} />
-              <Typography variant="h3" sx={{ mb: 1 }}>
-                Click to select files
-              </Typography>
-              <Typography variant="body2" color="text.secondary" align="center">
-                Accept .zip, .unitypackage, image files, .fbx, .gltf, and .glb files
-              </Typography>
-            </UploadBox>
-            
-            {files.length > 0 && (
-              <Box sx={{ mt: 3 }}>
-                <Typography variant="h3" sx={{ mb: 2 }}>Uploaded Files ({files.length})</Typography>
-                {files.map((file, index) => (
-                  <FileItem key={index}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {file.type.startsWith('image/') ? (
-                        <Box
-                          component="img"
-                          src={file.preview}
-                          sx={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 1, mr: 2 }}
-                        />
-                      ) : (
-                        <Box
-                          sx={{ 
-                            width: 40, 
-                            height: 40, 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center',
-                            backgroundColor: 'background.default',
-                            borderRadius: 1,
-                            mr: 2
-                          }}
-                        >
-                          {file.name.endsWith('.zip') || file.name.endsWith('.unitypackage')
-                            ? '📦'
-                            : file.name.endsWith('.fbx') || file.name.endsWith('.gltf') || file.name.endsWith('.glb')
-                            ? '🔷'
-                            : '📄'}
-                        </Box>
-                      )}
-                      <Box>
-                        <Typography variant="body1" noWrap>{file.name}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {(file.size / 1024 / 1024).toFixed(2)} MB
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <Button
-                      onClick={() => removeFile(index)}
-                      color="error"
-                      startIcon={<CloseIcon />}
-                    >
-                      Remove
-                    </Button>
-                  </FileItem>
-                ))}
-              </Box>
-            )}
-          </Box>
-        )}
-        
-        {activeStep === 2 && (
-          <Box>
             <Typography variant="h3" sx={{ mb: 2 }}>Compatibility Information</Typography>
             <Typography variant="body1" sx={{ mb: 3 }}>
               Select which avatar bases this asset is compatible with.
@@ -434,7 +308,7 @@ const AssetUploader = ({ onClose }) => {
           </Box>
         )}
         
-        {activeStep === 3 && (
+        {activeStep === 2 && (
           <Box>
             <Typography variant="h3" sx={{ mb: 2 }}>Review & Add Asset</Typography>
             
@@ -457,13 +331,7 @@ const AssetUploader = ({ onClose }) => {
                 </Grid>
                 
                 <Grid item xs={12} md={6}>
-                  <Typography variant="h3" sx={{ mb: 1 }}>Files & Compatibility</Typography>
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="body2" color="text.secondary">Files</Typography>
-                    <Typography variant="body1">
-                      {files.length > 0 ? `${files.length} file(s) uploaded` : 'No files uploaded (using download URL)'}
-                    </Typography>
-                  </Box>
+                  <Typography variant="h3" sx={{ mb: 1 }}>Link & Compatibility</Typography>
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="body2" color="text.secondary">Download URL</Typography>
                     <Typography 
@@ -567,7 +435,7 @@ const AssetUploader = ({ onClose }) => {
           <Button
             variant="contained"
             onClick={handleSubmit}
-            disabled={uploading || uploadSuccess || !assetData.name || !assetData.creator}
+            disabled={uploading || uploadSuccess || !assetData.name || !assetData.creator || !assetData.downloadUrl}
           >
             Add Asset
           </Button>
@@ -576,7 +444,7 @@ const AssetUploader = ({ onClose }) => {
             variant="contained"
             onClick={handleNext}
             disabled={
-              (activeStep === 0 && (!assetData.name || !assetData.creator))
+              (activeStep === 0 && (!assetData.name || !assetData.creator || !assetData.downloadUrl))
             }
           >
             Next
