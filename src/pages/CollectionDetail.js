@@ -39,7 +39,7 @@ import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import AssetCard from '../components/ui/AssetCard';
 
 // Import mock data - in a real app, you'd use context/redux
-import { collections, recentAssets } from '../data/mockData';
+import { collections, getAllAssets } from '../data/mockData';
 
 const CollectionDetail = () => {
   const { id } = useParams();
@@ -77,8 +77,9 @@ const CollectionDetail = () => {
       if (foundCollection) {
         setCollection(foundCollection);
         
-        // For demo purposes, just randomly assign some of the recent assets to this collection
-        const collectionAssets = recentAssets
+        // For demo purposes, get all assets and randomly assign some to this collection
+        const allAssets = getAllAssets();
+        const collectionAssets = allAssets
           .filter(() => Math.random() > 0.3) // Randomly include ~70% of assets
           .map(asset => ({
             ...asset,

@@ -1,4 +1,5 @@
 // src/data/mockData.js
+
 export const collections = [
   {
     id: 1,
@@ -136,9 +137,11 @@ export const assetTags = [
   'Steampunk'
 ];
 
-export const recentAssets = [
+// Separate asset collections by category
+
+export const clothingAssets = [
   {
-    id: 1,
+    id: 101,
     name: 'Neon Cyberpunk Jacket',
     creator: 'CyberCreator',
     description: 'A futuristic jacket with animated LED patterns that react to audio.',
@@ -148,6 +151,7 @@ export const recentAssets = [
     lastUsed: '2025-03-03',
     fileSize: '15.2 MB',
     filePath: 'D:/VRChat/Assets/Clothing/Cyberpunk/NeonJacket_v2.unitypackage',
+    downloadUrl: 'https://booth.pm/cybercreator/neon-jacket',
     version: '2.0',
     type: 'Clothing',
     favorited: false,
@@ -155,7 +159,64 @@ export const recentAssets = [
     notes: 'Works well with my Cyber Bunny avatar, need to adjust colors'
   },
   {
-    id: 2,
+    id: 102,
+    name: 'Casual Hoodie',
+    creator: 'EverydayClothes',
+    description: 'A comfortable hoodie with realistic fabric simulation.',
+    thumbnail: 'https://picsum.photos/id/1027/280/200',
+    tags: ['Clothing', 'Casual', 'Upper Body'],
+    dateAdded: '2025-02-28',
+    lastUsed: '2025-03-02',
+    fileSize: '12.8 MB',
+    filePath: 'D:/VRChat/Assets/Clothing/Casual/Hoodie_v1.unitypackage',
+    downloadUrl: 'https://booth.pm/everydayclothes/hoodie',
+    version: '1.0',
+    type: 'Clothing',
+    favorited: true,
+    compatibleWith: ['HumanMale4.2', 'HumanFemale4.2', 'HumanSlim3.1'],
+    notes: 'Great casual look, works with most avatars'
+  },
+  {
+    id: 103,
+    name: 'Fantasy Robe',
+    creator: 'MagicWardrobe',
+    description: 'Elegant wizard robe with flowing cloth physics.',
+    thumbnail: 'https://picsum.photos/id/1028/280/200',
+    tags: ['Clothing', 'Fantasy', 'Full Body'],
+    dateAdded: '2025-02-15',
+    lastUsed: '2025-02-20',
+    fileSize: '18.4 MB',
+    filePath: 'D:/VRChat/Assets/Clothing/Fantasy/WizardRobe.unitypackage',
+    downloadUrl: 'https://booth.pm/magicwardrobe/wizard-robe',
+    version: '2.1',
+    type: 'Clothing',
+    favorited: true,
+    compatibleWith: ['HumanMale4.2', 'HumanFemale4.2', 'Fantasy2.0'],
+    notes: 'Beautiful animations, but a bit performance heavy'
+  },
+  {
+    id: 104,
+    name: 'Futuristic Bodysuit',
+    creator: 'TechWear',
+    description: 'Sleek bodysuit with integrated circuit patterns and glow effects.',
+    thumbnail: 'https://picsum.photos/id/1029/280/200',
+    tags: ['Clothing', 'Sci-Fi', 'Full Body'],
+    dateAdded: '2025-01-20',
+    lastUsed: '2025-02-15',
+    fileSize: '22.1 MB',
+    filePath: 'D:/VRChat/Assets/Clothing/SciFi/TechSuit.unitypackage',
+    downloadUrl: 'https://booth.pm/techwear/bodysuit',
+    version: '1.5',
+    type: 'Clothing',
+    favorited: false,
+    compatibleWith: ['HumanFemale4.2', 'HumanSlim3.1'],
+    notes: 'Looks amazing in dark worlds with the glow effects'
+  }
+];
+
+export const propAssets = [
+  {
+    id: 201,
     name: 'Arcane Magic Staff',
     creator: 'MagicProps',
     description: 'A detailed staff with particle effects and custom animations.',
@@ -165,6 +226,7 @@ export const recentAssets = [
     lastUsed: '2025-03-02',
     fileSize: '22.8 MB',
     filePath: 'D:/VRChat/Assets/Props/Fantasy/ArcaneMagicStaff.unitypackage',
+    downloadUrl: 'https://gumroad.com/magicprops/arcane-staff',
     version: '1.5',
     type: 'Prop',
     favorited: true,
@@ -172,7 +234,46 @@ export const recentAssets = [
     notes: 'Love the particle effects, but a bit heavy on performance'
   },
   {
-    id: 3,
+    id: 202,
+    name: 'Sci-Fi Pistol',
+    creator: 'FutureTech',
+    description: 'Advanced energy pistol with reload animations and sound effects.',
+    thumbnail: 'https://picsum.photos/id/1042/280/200',
+    tags: ['Prop', 'Sci-Fi', 'Weapon'],
+    dateAdded: '2025-02-20',
+    lastUsed: '2025-03-01',
+    fileSize: '18.5 MB',
+    filePath: 'D:/VRChat/Assets/Props/SciFi/EnergyPistol.unitypackage',
+    downloadUrl: 'https://gumroad.com/futuretech/pistol',
+    version: '2.1',
+    type: 'Prop',
+    favorited: false,
+    compatibleWith: ['HumanMale4.2', 'HumanFemale4.2'],
+    notes: 'Reload animation is a bit glitchy, need to fix'
+  },
+  {
+    id: 203,
+    name: 'Medieval Shield',
+    creator: 'KnightForge',
+    description: 'Detailed medieval shield with custom heraldry options.',
+    thumbnail: 'https://picsum.photos/id/1043/280/200',
+    tags: ['Prop', 'Medieval', 'Shield'],
+    dateAdded: '2025-01-15',
+    lastUsed: '2025-02-05',
+    fileSize: '14.2 MB',
+    filePath: 'D:/VRChat/Assets/Props/Medieval/KnightShield.unitypackage',
+    downloadUrl: 'https://gumroad.com/knightforge/shield',
+    version: '1.0',
+    type: 'Prop',
+    favorited: true,
+    compatibleWith: ['HumanMale4.2', 'HumanFemale4.2', 'Fantasy2.0'],
+    notes: 'Works great with the Knight Armor set'
+  }
+];
+
+export const accessoryAssets = [
+  {
+    id: 301,
     name: 'Fluffy Cat Ears',
     creator: 'NekoDesigns',
     description: 'Realistic fluffy cat ears with physics and multiple color options.',
@@ -182,6 +283,7 @@ export const recentAssets = [
     lastUsed: '2025-02-28',
     fileSize: '8.4 MB',
     filePath: 'D:/VRChat/Assets/Accessories/CatEars_Fluffy.unitypackage',
+    downloadUrl: 'https://nekodesigns.jp/cat-ears-fluffy',
     version: '1.0',
     type: 'Accessory',
     favorited: false,
@@ -189,7 +291,7 @@ export const recentAssets = [
     notes: 'Very cute, works well with most of my avatars'
   },
   {
-    id: 4,
+    id: 302,
     name: 'LED Angel Wings',
     creator: 'LightEffects',
     description: 'Beautiful angel wings with customizable LED patterns and toggle animations.',
@@ -199,13 +301,111 @@ export const recentAssets = [
     lastUsed: '2025-02-26',
     fileSize: '18.6 MB',
     filePath: 'D:/VRChat/Assets/Accessories/Wings/LED_Angel_Wings.unitypackage',
+    downloadUrl: 'https://lighteffects.com/led-angel-wings',
     version: '2.1',
     type: 'Accessory',
     favorited: false,
     compatibleWith: ['HumanFemale4.2', 'HumanMale4.2', 'Fantasy2.0', 'HumanSlim3.1'],
     notes: 'Animations need some work but looks amazing in dark worlds'
+  },
+  {
+    id: 303,
+    name: 'Cybernetic Arm',
+    creator: 'CyberLimbs',
+    description: 'Highly detailed cybernetic arm replacement with custom animations.',
+    thumbnail: 'https://picsum.photos/id/161/280/200',
+    tags: ['Accessory', 'Limb', 'Cyberpunk'],
+    dateAdded: '2025-03-02',
+    lastUsed: '2025-03-04',
+    fileSize: '24.8 MB',
+    filePath: 'D:/VRChat/Assets/Accessories/Limbs/CyberArm_v3.unitypackage',
+    downloadUrl: 'https://cyberlimbs.com/cyber-arm',
+    version: '3.0',
+    type: 'Accessory',
+    favorited: true,
+    compatibleWith: ['HumanMale4.2', 'HumanFemale4.2', 'HumanSlim3.1'],
+    notes: 'Just got this one - amazing details and the finger animations are perfect'
   }
 ];
+
+export const textureAssets = [
+  {
+    id: 401,
+    name: 'Cyberpunk Skin Pack',
+    creator: 'NeonArtist',
+    description: 'High-resolution cybernetic skin textures with normal maps.',
+    thumbnail: 'https://picsum.photos/id/175/280/200',
+    tags: ['Texture', 'Cyberpunk', 'Skin'],
+    dateAdded: '2025-02-10',
+    lastUsed: '2025-02-22',
+    fileSize: '45.2 MB',
+    filePath: 'D:/VRChat/Assets/Textures/Skins/CyberpunkSkin.zip',
+    downloadUrl: 'https://neonartist.com/cyberpunk-skins',
+    version: '1.3',
+    type: 'Texture',
+    favorited: true,
+    compatibleWith: ['HumanMale4.2', 'HumanFemale4.2'],
+    notes: 'Great quality textures, works best with AvatarSDK3'
+  },
+  {
+    id: 402,
+    name: 'Fantasy Fabric Collection',
+    creator: 'TextureMaster',
+    description: 'Medieval and fantasy fabric textures with PBR maps.',
+    thumbnail: 'https://picsum.photos/id/176/280/200',
+    tags: ['Texture', 'Fantasy', 'Fabric'],
+    dateAdded: '2025-02-05',
+    lastUsed: '2025-02-15',
+    fileSize: '62.8 MB',
+    filePath: 'D:/VRChat/Assets/Textures/Fabrics/FantasyCollection.zip',
+    downloadUrl: 'https://texturemaster.com/fantasy-fabrics',
+    version: '2.0',
+    type: 'Texture',
+    favorited: false,
+    compatibleWith: ['Any'],
+    notes: 'High resolution textures, might need to downscale for some avatars'
+  }
+];
+
+export const animationAssets = [
+  {
+    id: 501,
+    name: 'Dance Pack Vol. 1',
+    creator: 'MoveStudio',
+    description: 'Collection of 10 popular dance animations optimized for VRChat.',
+    thumbnail: 'https://picsum.photos/id/177/280/200',
+    tags: ['Animation', 'Dance', 'Full Body'],
+    dateAdded: '2025-01-25',
+    lastUsed: '2025-02-18',
+    fileSize: '34.6 MB',
+    filePath: 'D:/VRChat/Assets/Animations/Dance/DancePack_Vol1.unitypackage',
+    downloadUrl: 'https://movestudio.com/dance-pack-1',
+    version: '2.5',
+    type: 'Animation',
+    favorited: true,
+    compatibleWith: ['HumanMale4.2', 'HumanFemale4.2', 'HumanSlim3.1'],
+    notes: 'Works with all humanoid rigs, great for dance worlds'
+  }
+];
+
+// Helper function to get all assets
+export const getAllAssets = () => {
+  return [
+    ...clothingAssets,
+    ...propAssets,
+    ...accessoryAssets,
+    ...textureAssets,
+    ...animationAssets
+  ];
+};
+
+// Helper function to get recently added assets
+export const getRecentAssets = (count = 5) => {
+  const allAssets = getAllAssets();
+  return allAssets
+    .sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded))
+    .slice(0, count);
+};
 
 export const settings = {
   defaultAvatarPath: 'D:/VRChat/Avatars',
@@ -213,9 +413,7 @@ export const settings = {
   unityPath: 'C:/Program Files/Unity/Hub/Editor/2022.3.6f1/Editor/Unity.exe',
   autoSync: true,
   darkMode: true,
-  showFilePaths: true,
-  backupFrequency: 'weekly',
-  lastBackup: '2025-02-28'
+  showFilePaths: true
 };
 
 export const compatibilityMatrix = {

@@ -28,7 +28,7 @@ import InfoIcon from '@mui/icons-material/Info';
 import { styled } from '@mui/material/styles';
 
 // Import avatar bases and assets from mockData
-import { avatarBases, recentAssets, compatibilityMatrix } from '../../data/mockData';
+import { avatarBases, compatibilityMatrix, getAllAssets } from '../../data/mockData';
 
 const ResultItem = styled(Box)(({ theme, status }) => ({
   display: 'flex',
@@ -49,6 +49,9 @@ const CompatibilityChecker = () => {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [mode, setMode] = useState('asset'); // 'asset' or 'avatar'
+
+  // Get all assets from various categories
+  const allAssets = getAllAssets();
 
   const handleSourceAvatarChange = (event) => {
     setSourceAvatar(event.target.value);
@@ -86,7 +89,7 @@ const CompatibilityChecker = () => {
       
       if (mode === 'asset') {
         // Check asset compatibility with avatar
-        const selectedAsset = recentAssets.find(a => a.id.toString() === asset);
+        const selectedAsset = allAssets.find(a => a.id.toString() === asset);
         const avatarName = avatarBases.find(a => a.id === sourceAvatar)?.name;
         
         const isCompatible = selectedAsset.compatibleWith.includes(avatarName);
@@ -308,7 +311,7 @@ const CompatibilityChecker = () => {
                 label="Asset to Check"
               >
                 <MenuItem value=""><em>Select an asset</em></MenuItem>
-                {recentAssets.map((asset) => (
+                {allAssets.map((asset) => (
                   <MenuItem key={asset.id} value={asset.id.toString()}>
                     {asset.name} ({asset.type})
                   </MenuItem>
