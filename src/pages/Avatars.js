@@ -116,6 +116,8 @@ const Avatars = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [newBaseDialogOpen, setNewBaseDialogOpen] = useState(false);
+  const [newBaseName, setNewBaseName] = useState('');
   const [newAvatarData, setNewAvatarData] = useState({
     name: '',
     base: '',
@@ -319,10 +321,35 @@ const Avatars = () => {
 
   const handleNewAvatarChange = (e) => {
     const { name, value } = e.target;
+    
+    if (name === 'base' && value === 'new_base') {
+      setNewBaseDialogOpen(true);
+      return;
+    }
+    
     setNewAvatarData(prev => ({
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleNewBaseDialogClose = () => {
+    setNewBaseDialogOpen(false);
+    setNewBaseName('');
+  };
+
+  const handleAddNewBase = () => {
+    if (!newBaseName.trim()) return;
+    
+    // In a real app, this would be an API call to add the new base
+    // For now, we'll just update the newAvatarData
+    setNewAvatarData(prev => ({
+      ...prev,
+      base: newBaseName.trim()
+    }));
+    
+    // Close the dialog
+    handleNewBaseDialogClose();
   };
 
   const handleSaveAvatar = () => {
@@ -810,6 +837,10 @@ const Avatars = () => {
                     {base.name}
                   </MenuItem>
                 ))}
+                <Divider />
+                <MenuItem value="new_base">
+                  <em>+ Add New Base</em>
+                </MenuItem>
               </Select>
             </FormControl>
             
@@ -991,6 +1022,34 @@ const Avatars = () => {
         <DialogActions>
           <Button onClick={handleDeleteDialogClose}>Cancel</Button>
           <Button color="error" onClick={handleDeleteAvatar}>Delete</Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* New Base Dialog */}
+      <Dialog open={newBaseDialogOpen} onClose={handleNewBaseDialogClose}>
+        <DialogTitle>Add New Avatar Base</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 1 }}>
+            <TextField
+              autoFocus
+              fullWidth
+              label="Base Name"
+              value={newBaseName}
+              onChange={(e) => setNewBaseName(e.target.value)}
+              placeholder="e.g., NekoModular2.5"
+              helperText="Enter the name of the new avatar base"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleNewBaseDialogClose}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleAddNewBase}
+            disabled={!newBaseName.trim()}
+          >
+            Add Base
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

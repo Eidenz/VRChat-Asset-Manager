@@ -34,6 +34,8 @@ import SortIcon from '@mui/icons-material/Sort';
 import FolderIcon from '@mui/icons-material/Folder';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import ViewListIcon from '@mui/icons-material/ViewList';
+import CheckboxIcon from '@mui/icons-material/CheckBox';
+import CheckboxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 
 // Import mock data - in a real app, you'd use context/redux
 import { collections as mockCollections } from '../data/mockData';

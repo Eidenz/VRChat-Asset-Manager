@@ -8,7 +8,6 @@ import {
   Button,
   Divider,
   IconButton,
-  Card,
   Chip,
   TextField,
   InputAdornment,
@@ -22,18 +21,19 @@ import {
   Breadcrumbs,
   Link,
   Tooltip,
+  Card,
+  CardMedia,
+  CardContent
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 import FolderIcon from '@mui/icons-material/Folder';
 import SortIcon from '@mui/icons-material/Sort';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import SearchIcon from '@mui/icons-material/Search';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import CheckboxIcon from '@mui/icons-material/CheckBox';
 
 // Import components
 import AssetCard from '../components/ui/AssetCard';
@@ -61,6 +61,10 @@ const CollectionDetail = () => {
   const [addAssetDialogOpen, setAddAssetDialogOpen] = useState(false);
   const [removingAsset, setRemovingAsset] = useState(null);
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+  const [availableAssets, setAvailableAssets] = useState([]);
+  const [selectedAssets, setSelectedAssets] = useState([]);
+  const [assetSearchQuery, setAssetSearchQuery] = useState('');
+  const [loadingAssets, setLoadingAssets] = useState(false);
   
   // Get available filters from assets
   const [availableFilters, setAvailableFilters] = useState({
@@ -104,6 +108,26 @@ const CollectionDetail = () => {
       setLoading(false);
     }, 1000);
   }, [id]);
+
+  useEffect(() => {
+    if (!addAssetDialogOpen) return;
+    
+    setLoadingAssets(true);
+    setSelectedAssets([]);
+    setAssetSearchQuery('');
+    
+    // In a real app, this would be an API call to fetch assets not in the collection
+    setTimeout(() => {
+      const allAssets = getAllAssets();
+      
+      // Filter out assets already in the collection
+      const collectionAssetIds = assets.map(asset => asset.id);
+      const availableAssets = allAssets.filter(asset => !collectionAssetIds.includes(asset.id));
+      
+      setAvailableAssets(availableAssets);
+      setLoadingAssets(false);
+    }, 1000);
+  }, [addAssetDialogOpen, assets]);
 
   // Update filtered assets when search or filters change
   useEffect(() => {
@@ -223,14 +247,47 @@ const CollectionDetail = () => {
     setAddAssetDialogOpen(true);
   };
 
+  const getFilteredAvailableAssets = () => {
+    if (!assetSearchQuery) return availableAssets;
+    
+    const query = assetSearchQuery.toLowerCase();
+    return availableAssets.filter(asset => 
+      asset.name.toLowerCase().includes(query) || 
+      asset.creator.toLowerCase().includes(query) ||
+      asset.type.toLowerCase().includes(query) ||
+      asset.tags.some(tag => tag.toLowerCase().includes(query))
+    );
+  };
+
   const handleCloseAddAssetDialog = () => {
     setAddAssetDialogOpen(false);
+    setSelectedAssets([]);
+    setAssetSearchQuery('');
+  };
+
+  const handleToggleAsset = (asset) => {
+    setSelectedAssets(prev => {
+      if (prev.some(a => a.id === asset.id)) {
+        return prev.filter(a => a.id !== asset.id);
+      } else {
+        return [...prev, asset];
+      }
+    });
   };
 
   const handleAddAssetToCollection = () => {
     // In a real app, you'd call an API to add assets to the collection
-    // For demo purposes, we'll just close the dialog
+    // For now, we'll just add them to the local state
+    const updatedAssets = [...assets, ...selectedAssets.map(asset => ({
+      ...asset,
+      dateAddedToCollection: new Date().toISOString()
+    }))];
+    
+    setAssets(updatedAssets);
+    
+    // Close the dialog and reset selection
     handleCloseAddAssetDialog();
+    setSelectedAssets([]);
   };
 
   const handleOpenRemoveConfirm = (asset) => {
@@ -627,21 +684,115 @@ const CollectionDetail = () => {
       >
         <DialogTitle>Add Assets to Collection</DialogTitle>
         <DialogContent>
-          <Typography variant="body1" sx={{ mb: 3 }}>
-            Select assets to add to the "{collection.name}" collection.
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            In a full implementation, this would show a selectable list of assets that are not already in this collection.
-          </Typography>
+          <TextField
+            fullWidth
+            placeholder="Search assets..."
+            value={assetSearchQuery}
+            onChange={(e) => setAssetSearchQuery(e.target.value)}
+            sx={{ mb: 2, mt: 1 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+          
+          {loadingAssets ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : availableAssets.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="h3" sx={{ mb: 2 }}>No Available Assets</Typography>
+              <Typography variant="body1" color="text.secondary">
+                All your assets are already in this collection.
+              </Typography>
+            </Box>
+          ) : getFilteredAvailableAssets().length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="h3" sx={{ mb: 2 }}>No Matching Assets</Typography>
+              <Typography variant="body1" color="text.secondary">
+                No assets match your search query.
+              </Typography>
+            </Box>
+          ) : (
+            <Box sx={{ height: '400px', overflow: 'auto' }}>
+              <Grid container spacing={2}>
+                {getFilteredAvailableAssets().map(asset => (
+                  <Grid item xs={12} sm={6} md={4} key={asset.id}>
+                    <Card 
+                      sx={{ 
+                        position: 'relative',
+                        cursor: 'pointer',
+                        border: selectedAssets.some(a => a.id === asset.id) 
+                          ? '2px solid' 
+                          : '2px solid transparent',
+                        borderColor: 'primary.main',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onClick={() => handleToggleAsset(asset)}
+                    >
+                      {selectedAssets.some(a => a.id === asset.id) && (
+                        <Box 
+                          sx={{ 
+                            position: 'absolute', 
+                            top: 8, 
+                            right: 8, 
+                            zIndex: 1,
+                            bgcolor: 'primary.main',
+                            borderRadius: '50%',
+                            width: 24,
+                            height: 24,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <CheckboxIcon sx={{ color: 'white', fontSize: 18 }} />
+                        </Box>
+                      )}
+                      <CardMedia
+                        component="img"
+                        height="120"
+                        image={asset.thumbnail}
+                        alt={asset.name}
+                      />
+                      <CardContent sx={{ pb: 1 }}>
+                        <Typography variant="h3" noWrap>{asset.name}</Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" color="text.secondary">
+                            {asset.type}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            By: {asset.creator}
+                          </Typography>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseAddAssetDialog}>Cancel</Button>
-          <Button 
-            onClick={handleAddAssetToCollection} 
-            variant="contained"
-          >
-            Add Selected
-          </Button>
+        <DialogActions sx={{ p: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', pl: 2 }}>
+            <Typography variant="body2">
+              {selectedAssets.length} {selectedAssets.length === 1 ? 'asset' : 'assets'} selected
+            </Typography>
+            <Box>
+              <Button onClick={handleCloseAddAssetDialog}>Cancel</Button>
+              <Button 
+                variant="contained"
+                onClick={handleAddAssetToCollection}
+                disabled={selectedAssets.length === 0}
+              >
+                Add to Collection
+              </Button>
+            </Box>
+          </Box>
         </DialogActions>
       </Dialog>
       
