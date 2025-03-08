@@ -1,9 +1,10 @@
-// server/server.js - Updated with uploads routes
+// server/server.js - Updated with better uploads handling
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const morgan = require('morgan');
 const helmet = require('helmet');
+const fs = require('fs');
 const { close } = require('./db/database');
 
 // Import routes
@@ -16,6 +17,32 @@ const uploadsRoutes = require('./routes/uploads');
 // Create Express app
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Ensure directories exist with proper permissions
+const uploadsDir = path.join(__dirname, '../uploads');
+const dbDir = path.join(__dirname, '../database');
+
+// Create uploads directory if it doesn't exist
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  try {
+    fs.chmodSync(uploadsDir, 0o777); // Set full permissions
+    console.log('Created uploads directory with full permissions');
+  } catch (error) {
+    console.error('Failed to set permissions on uploads directory:', error);
+  }
+}
+
+// Create database directory if it doesn't exist
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+  try {
+    fs.chmodSync(dbDir, 0o777); // Set full permissions
+    console.log('Created database directory with full permissions');
+  } catch (error) {
+    console.error('Failed to set permissions on database directory:', error);
+  }
+}
 
 // Apply middlewares
 app.use(helmet({
@@ -57,6 +84,8 @@ app.use((err, req, res, next) => {
 // Start server
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Upload directory: ${uploadsDir}`);
+  console.log(`Database directory: ${dbDir}`);
 });
 
 // Handle process termination

@@ -1,4 +1,4 @@
-// src/components/features/AssetUploader.js
+// src/components/features/AssetUploader.js - Updated with custom avatar bases support
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
@@ -24,6 +24,7 @@ import {
   DialogActions,
   Paper,
   Dialog,
+  ListItemText,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
@@ -121,6 +122,9 @@ const AssetUploader = ({ onClose }) => {
   const fileInputRef = useRef(null);
   const [showNewTagInput, setShowNewTagInput] = useState(false);
   const [newTagValue, setNewTagValue] = useState('');
+  const [showNewAvatarBaseInput, setShowNewAvatarBaseInput] = useState(false);
+  const [newAvatarBaseName, setNewAvatarBaseInput] = useState('');
+  const [newAvatarBaseId, setNewAvatarBaseId] = useState('');
   
   // Get data and functions from API context
   const { assetsAPI, avatarsAPI, fetchAssets } = useApi();
@@ -128,6 +132,7 @@ const AssetUploader = ({ onClose }) => {
   // State for data loaded from API
   const [assetTypes, setAssetTypes] = useState([]);
   const [avatarBases, setAvatarBases] = useState([]);
+  const [customAvatarBases, setCustomAvatarBases] = useState([]);
   const [assetTags, setAssetTags] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
 
@@ -157,7 +162,19 @@ const AssetUploader = ({ onClose }) => {
         // Fetch avatar bases
         try {
           const basesResponse = await avatarsAPI.getBases();
-          setAvatarBases(basesResponse.data || []);
+          const retrievedBases = basesResponse.data || [];
+          setAvatarBases(retrievedBases);
+          
+          // Try to load custom bases from localStorage
+          try {
+            const savedCustomBases = localStorage.getItem('customAvatarBases');
+            if (savedCustomBases) {
+              const parsedBases = JSON.parse(savedCustomBases);
+              setCustomAvatarBases(parsedBases);
+            }
+          } catch (localStorageError) {
+            console.error('Error loading custom bases from localStorage:', localStorageError);
+          }
         } catch (basesError) {
           console.error('Error loading avatar bases:', basesError);
           setAvatarBases([]);
@@ -211,6 +228,43 @@ const AssetUploader = ({ onClose }) => {
       // Reset input
       setNewTagValue('');
       setShowNewTagInput(false);
+    }
+  };
+  
+  const handleAddNewAvatarBase = () => {
+    if (newAvatarBaseName) {
+      // Generate an ID if not provided
+      const baseId = newAvatarBaseId || newAvatarBaseName.toLowerCase().replace(/\s+/g, '');
+      
+      // Create the new avatar base
+      const newBase = {
+        id: baseId,
+        name: newAvatarBaseName
+      };
+      
+      // Add to custom avatar bases
+      const updatedCustomBases = [...customAvatarBases, newBase];
+      setCustomAvatarBases(updatedCustomBases);
+      
+      // Save to localStorage for persistence
+      try {
+        localStorage.setItem('customAvatarBases', JSON.stringify(updatedCustomBases));
+      } catch (error) {
+        console.error('Error saving custom bases to localStorage:', error);
+      }
+      
+      // If the asset is compatible with the new avatar base, add it to compatibleWith
+      if (!assetData.compatibleWith.includes(newAvatarBaseName)) {
+        setAssetData(prev => ({
+          ...prev,
+          compatibleWith: [...prev.compatibleWith, newAvatarBaseName]
+        }));
+      }
+      
+      // Reset input fields
+      setNewAvatarBaseInput('');
+      setNewAvatarBaseId('');
+      setShowNewAvatarBaseInput(false);
     }
   };
 
@@ -390,6 +444,9 @@ const AssetUploader = ({ onClose }) => {
     setImageFile(null);
     setImagePreview('');
   };
+
+  // Combine API avatar bases with custom avatar bases
+  const allAvatarBases = [...avatarBases, ...customAvatarBases];
 
   return (
     <>
@@ -644,14 +701,54 @@ const AssetUploader = ({ onClose }) => {
                     )}
                     MenuProps={MenuProps}
                   >
-                    {avatarBases.map((base) => (
+                    {allAvatarBases.map((base) => (
                       <MenuItem key={base.id} value={base.name}>
                         <Checkbox checked={assetData.compatibleWith.indexOf(base.name) > -1} />
-                        {base.name}
+                        <ListItemText primary={base.name} />
                       </MenuItem>
                     ))}
+                    <Divider sx={{ my: 1 }} />
+                    <MenuItem
+                      sx={{ fontStyle: 'italic', color: 'primary.main' }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowNewAvatarBaseInput(true);
+                      }}
+                    >
+                      <AddIcon fontSize="small" sx={{ mr: 1 }} />
+                      Add new avatar base
+                    </MenuItem>
                   </Select>
                 </FormControl>
+
+                <Dialog open={showNewAvatarBaseInput} onClose={() => setShowNewAvatarBaseInput(false)}>
+                  <DialogTitle>Add New Avatar Base</DialogTitle>
+                  <DialogContent>
+                    <TextField
+                      autoFocus
+                      margin="dense"
+                      label="Base Name"
+                      fullWidth
+                      value={newAvatarBaseName}
+                      onChange={(e) => setNewAvatarBaseInput(e.target.value)}
+                    />
+                    <TextField
+                      margin="dense"
+                      label="Base ID"
+                      fullWidth
+                      value={newAvatarBaseId}
+                      onChange={(e) => setNewAvatarBaseId(e.target.value)}
+                      helperText="Optional: Provide a unique ID for this base"
+                    />
+                  </DialogContent>
+                  <DialogActions>
+                    <Button onClick={() => setShowNewAvatarBaseInput(false)}>Cancel</Button>
+                    <Button onClick={handleAddNewAvatarBase} disabled={!newAvatarBaseName}>
+                      Add
+                    </Button>
+                  </DialogActions>
+                </Dialog>
                 
                 <Alert severity="info" sx={{ mb: 3 }}>
                   Being specific about compatibility helps you find suitable assets for your avatars later.

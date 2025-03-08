@@ -16,6 +16,7 @@ services:
       - NODE_ENV=production
       - PORT=5000
     restart: unless-stopped
+    user: "node"  # Use the node user instead of root
     
   # Development services (for development only - comment out for production)
   # client:

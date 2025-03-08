@@ -1,12 +1,18 @@
-// server/db/init.js - Empty database initialization
+// server/db/init.js - Updated with better permission handling
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 
-// Ensure database directory exists
+// Ensure database directory exists with proper permissions
 const dbDir = path.join(__dirname, '../../database');
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
+  try {
+    fs.chmodSync(dbDir, 0o777);
+    console.log('Set permissions for database directory');
+  } catch (error) {
+    console.error('Error setting database directory permissions:', error);
+  }
 }
 
 const dbPath = path.join(dbDir, 'vrchat_assets.db');
@@ -19,6 +25,14 @@ if (fs.existsSync(dbPath)) {
 
 // Create a new database
 const db = new sqlite3.Database(dbPath);
+
+// Set permissions for the database file
+try {
+  fs.chmodSync(dbPath, 0o666);
+  console.log('Set permissions for database file');
+} catch (error) {
+  console.error('Error setting database file permissions:', error);
+}
 
 // Run database setup without seeding
 db.serialize(() => {
