@@ -134,9 +134,14 @@ router.put('/:id',
       // Format the avatar data to match frontend expectations
       const formattedAvatar = {
         ...updatedAvatar,
+        id: updatedAvatar.id,
+        name: updatedAvatar.name,
+        base: updatedAvatar.base,
+        thumbnail: updatedAvatar.thumbnail,
         dateAdded: updatedAvatar.date_added,
         lastUsed: updatedAvatar.last_used,
         filePath: updatedAvatar.file_path,
+        notes: updatedAvatar.notes,
         favorited: updatedAvatar.favorited === 1
       };
       
