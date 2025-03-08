@@ -10,6 +10,7 @@ A web companion app for managing VRChat assets, including avatars, clothing, pro
 - Favorite and quickly access frequently used items
 - Search and filter assets by various criteria
 - Dark/Light theme support
+- Custom image uploads for avatars and collections
 
 ## Technologies
 
@@ -32,6 +33,7 @@ vrchat-asset-manager/
 │   ├── db/           # Database related files
 │   ├── routes/       # API routes
 │   ├── models/       # Data models
+│   ├── utils/        # Utility functions
 │   ├── server.js     # Express server
 │   └── package.json
 │
@@ -43,13 +45,9 @@ vrchat-asset-manager/
 
 ## Getting Started
 
-### Prerequisites
-
-- Docker and Docker Compose
-- Node.js 16+ (for local development)
-- npm or yarn
-
 ### Running with Docker
+
+The easiest way to get started is using Docker:
 
 1. Clone the repository:
    ```
@@ -112,7 +110,7 @@ vrchat-asset-manager/
 - `GET /api/avatars/:id` - Get avatar by ID
 - `POST /api/avatars` - Create a new avatar
 - `PUT /api/avatars/:id` - Update an avatar
-- `PUT /api/avatars/:id/current` - Set avatar as current
+- `PUT /api/avatars/:id/current` - Toggle avatar current status
 - `PUT /api/avatars/:id/favorite` - Toggle avatar favorite status
 - `DELETE /api/avatars/:id` - Delete an avatar
 - `GET /api/avatars/bases/all` - Get all avatar bases
@@ -150,6 +148,11 @@ vrchat-asset-manager/
 - `GET /api/settings/:key` - Get setting by key
 - `PUT /api/settings/:key` - Update a setting
 - `POST /api/settings` - Update multiple settings
+
+### Uploads
+
+- `POST /api/uploads/image` - Upload an image file
+- `DELETE /api/uploads/image/:filename` - Delete an uploaded image file
 
 ## Contributing
 

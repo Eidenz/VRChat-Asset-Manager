@@ -1,3 +1,4 @@
+# docker-compose.yml
 version: '3.8'
 
 services:
@@ -15,8 +16,8 @@ services:
       - NODE_ENV=production
       - PORT=5000
     restart: unless-stopped
-
-  # Development services (commented out for production)
+    
+  # Development services (for development only - comment out for production)
   # client:
   #   build:
   #     context: ./client

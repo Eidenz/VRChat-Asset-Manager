@@ -26,11 +26,15 @@ import { useApi } from '../../context/ApiContext';
 
 // Styled components
 const StyledCard = styled(motion(Card))(({ theme }) => ({
-  overflow: 'hidden',
-  transition: 'all 0.3s ease',
-  height: '100%',
+  height: '100%', // This ensures all cards take the full height of their container
   display: 'flex',
   flexDirection: 'column',
+  overflow: 'hidden',
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'translateY(-5px)',
+    boxShadow: theme.shadows[10]
+  }
 }));
 
 const StyledBadge = styled(Box)(({ theme }) => ({
@@ -65,7 +69,7 @@ const TagsContainer = styled(Box)(({ theme }) => ({
   flexWrap: 'wrap',
   gap: 6,
   marginBottom: 16,
-  minHeight: 30, // Add a minimum height for tags container
+  minHeight: 30, // Minimum height for tags section
 }));
 
 const StyledTag = styled(Chip)(({ theme }) => ({
@@ -186,12 +190,7 @@ const AssetCard = ({ asset: propAsset }) => {
           </StyledFavoriteButton>
         </Box>
         
-        <CardContent sx={{ 
-          flexGrow: 1, 
-          display: 'flex', 
-          flexDirection: 'column',
-          height: 280, // Set a fixed height for card content
-        }}>
+        <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
           <Typography variant="h3" sx={{ mb: 0.5 }}>{asset.name}</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
             By: {asset.creator}

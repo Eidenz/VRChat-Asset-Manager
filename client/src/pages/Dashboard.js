@@ -148,18 +148,22 @@ const Dashboard = () => {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                     <Typography variant="h2">Recently Added Assets</Typography>
                   </Box>
-                  {assets.recent.map((recentAsset, assetIndex) => (
-                    <Grid item xs={12} sm={6} md={4} key={recentAsset.id} sx={{ height: '100%' }}>
-                      <motion.div
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{ duration: 0.3, delay: 0.2 + assetIndex * 0.05 }}
-                        style={{ height: '100%' }}
-                      >
-                        <AssetCard asset={recentAsset} />
-                      </motion.div>
-                    </Grid>
-                  ))}
+                    <Grid container spacing={2}>
+                    {assets.recent.map((recentAsset, assetIndex) => (
+                      <Grid item xs={12} sm={6} md={4} key={recentAsset.id}>
+                        <motion.div
+                          initial={{ y: 20, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          transition={{ duration: 0.3, delay: 0.2 + assetIndex * 0.05 }}
+                          style={{ height: '100%' }} // Make the motion div take full height
+                        >
+                          <Box sx={{ height: '100%' }}> {/* Add a Box to maintain height */}
+                            <AssetCard asset={recentAsset} />
+                          </Box>
+                        </motion.div>
+                      </Grid>
+                    ))}
+                  </Grid>
                 </Box>
               </motion.div>
 

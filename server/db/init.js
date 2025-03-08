@@ -1,4 +1,4 @@
-// server/db/init.js - Simplified SQLite database initializer
+// server/db/init.js - Empty database initialization
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
@@ -20,10 +20,7 @@ if (fs.existsSync(dbPath)) {
 // Create a new database
 const db = new sqlite3.Database(dbPath);
 
-// Import mock data
-const mockData = require('../seed/mockData');
-
-// Run database setup and seeding
+// Run database setup without seeding
 db.serialize(() => {
   console.log('Creating tables...');
   
@@ -108,148 +105,43 @@ db.serialize(() => {
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   )`);
+
+  // Insert default settings
+  db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['defaultAvatarPath', 'D:/VRChat/Avatars']);
+  db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['defaultAssetsPath', 'D:/VRChat/Assets']);
+  db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['unityPath', 'C:/Program Files/Unity/Hub/Editor/2022.3.6f1/Editor/Unity.exe']);
+  db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['autoSync', '1']);
+  db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['darkMode', '1']);
+  db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['showFilePaths', '1']);
+
+  // Insert default avatar bases
+  const defaultBases = [
+    { id: 'humanMale4', name: 'HumanMale4.2' },
+    { id: 'humanFemale4', name: 'HumanFemale4.2' },
+    { id: 'humanSlim3', name: 'HumanSlim3.1' }
+  ];
   
-  console.log('Seeding data...');
-  
-  // Insert avatar bases
-  mockData.avatarBases.forEach(base => {
+  defaultBases.forEach(base => {
     db.run('INSERT INTO avatar_bases (id, name) VALUES (?, ?)', [base.id, base.name]);
   });
   
-  // Insert asset types
-  mockData.assetTypes.forEach(type => {
+  // Insert default asset types
+  const defaultTypes = [
+    { id: 'clothing', name: 'Clothing' },
+    { id: 'prop', name: 'Prop' },
+    { id: 'accessory', name: 'Accessory' },
+    { id: 'texture', name: 'Texture' },
+    { id: 'animation', name: 'Animation' }
+  ];
+  
+  defaultTypes.forEach(type => {
     db.run('INSERT INTO asset_types (id, name) VALUES (?, ?)', [type.id, type.name]);
   });
-  
-  // Insert tags
-  mockData.assetTags.forEach(tag => {
-    db.run('INSERT INTO tags (name) VALUES (?)', [tag]);
-  });
-  
-  // Insert avatars
-  mockData.avatars.forEach(avatar => {
-    db.run(
-      'INSERT INTO avatars (id, name, base, thumbnail, date_added, last_used, file_path, notes, favorited) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [
-        avatar.id,
-        avatar.name,
-        avatar.base,
-        avatar.thumbnail,
-        avatar.dateAdded,
-        avatar.lastUsed,
-        avatar.filePath,
-        avatar.notes,
-        avatar.favorited ? 1 : 0
-      ]
-    );
-  });
-  
-  // Insert collections
-  mockData.collections.forEach(collection => {
-    db.run(
-      'INSERT INTO collections (id, name, description, thumbnail, date_created, folder_path) VALUES (?, ?, ?, ?, ?, ?)',
-      [
-        collection.id,
-        collection.name,
-        collection.description,
-        collection.thumbnail,
-        collection.dateCreated,
-        collection.folderPath
-      ]
-    );
-  });
-  
-  // Insert assets
-  const allAssets = mockData.getAllAssets();
-  allAssets.forEach(asset => {
-    db.run(
-      'INSERT INTO assets (id, name, creator, description, thumbnail, date_added, last_used, file_size, file_path, download_url, version, type, favorited, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [
-        asset.id,
-        asset.name,
-        asset.creator,
-        asset.description,
-        asset.thumbnail,
-        asset.dateAdded,
-        asset.lastUsed || asset.dateAdded,
-        asset.fileSize || null,
-        asset.filePath || null,
-        asset.downloadUrl || null,
-        asset.version || null,
-        asset.type,
-        asset.favorited ? 1 : 0,
-        asset.notes || null
-      ]
-    );
-  });
-  
-  // Insert settings
-  Object.entries(mockData.settings).forEach(([key, value]) => {
-    const stringValue = typeof value === 'boolean' ? (value ? '1' : '0') : String(value);
-    db.run('INSERT INTO settings (key, value) VALUES (?, ?)', [key, stringValue]);
-  });
-  
-  // Wait for all inserts to complete before adding relationships
-  db.run('PRAGMA foreign_keys = ON', [], function(err) {
-    if (err) {
-      console.error('Error enabling foreign keys:', err.message);
-      return;
-    }
     
-    console.log('Setting up relationships...');
-    
-    // Get tag IDs for assets
-    db.all('SELECT id, name FROM tags', [], (err, tags) => {
-      if (err) {
-        console.error('Error getting tags:', err.message);
-        return;
-      }
-      
-      const tagMap = {};
-      tags.forEach(tag => {
-        tagMap[tag.name] = tag.id;
-      });
-      
-      // Insert asset tags
-      allAssets.forEach(asset => {
-        asset.tags.forEach(tagName => {
-          const tagId = tagMap[tagName];
-          if (tagId) {
-            db.run('INSERT INTO asset_tags (asset_id, tag_id) VALUES (?, ?)', [asset.id, tagId]);
-          }
-        });
-      });
-      
-      // Insert asset compatible avatars
-      allAssets.forEach(asset => {
-        if (asset.compatibleWith) {
-          asset.compatibleWith.forEach(avatarBase => {
-            db.run('INSERT INTO asset_compatible_avatars (asset_id, avatar_base) VALUES (?, ?)', [asset.id, avatarBase]);
-          });
-        }
-      });
-      
-      // Insert collection assets
-      mockData.collections.forEach(collection => {
-        // For each collection, randomly assign 5-10 assets
-        const numAssets = Math.floor(Math.random() * 6) + 5; // 5-10 assets
-        const selectedAssets = new Set();
-        
-        while (selectedAssets.size < numAssets && selectedAssets.size < allAssets.length) {
-          const randomIndex = Math.floor(Math.random() * allAssets.length);
-          const asset = allAssets[randomIndex];
-          
-          if (!selectedAssets.has(asset.id)) {
-            selectedAssets.add(asset.id);
-            const dateAdded = new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString();
-            db.run('INSERT INTO collection_assets (collection_id, asset_id, date_added) VALUES (?, ?, ?)', [collection.id, asset.id, dateAdded]);
-          }
-        }
-      });
-      
-      console.log('Database initialization complete!');
-    });
-  });
+  // Enable foreign keys
+  db.run('PRAGMA foreign_keys = ON');
+  
+  console.log('Database initialization complete! Created empty database with schema.');
 });
 
 // Close the database connection after a delay to ensure all operations complete
@@ -261,4 +153,4 @@ setTimeout(() => {
       console.log('Database connection closed');
     }
   });
-}, 3000);
+}, 1000);

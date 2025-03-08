@@ -1,46 +1,39 @@
-# Multi-stage build for VRChat Asset Manager
+# Dockerfile for VRChat Asset Manager
+FROM node:20-alpine
 
-# Stage 1: Build React frontend
-FROM node:18-alpine as client-builder
-WORKDIR /app/client
-
-# Copy package.json and package-lock.json
-COPY client/package*.json ./
-
-# Install dependencies
-RUN npm ci
-
-# Copy the rest of the client code
-COPY client/ ./
-
-# Build the React app
-RUN npm run build
-
-# Stage 2: Setup backend and serve frontend
-FROM node:18-alpine
 WORKDIR /app
 
-# Copy backend package.json and package-lock.json
-COPY server/package*.json ./
-
-# Install production dependencies
-RUN npm ci --production
-
-# Copy the rest of the backend code
-COPY server/ ./
-
-# Copy the built frontend from the first stage
-COPY --from=client-builder /app/client/build ./client/build
-
-# Create database directory
+# Create directory for uploads
+RUN mkdir -p /app/uploads
 RUN mkdir -p /app/database
 
-# Setup environment
+# Install dependencies for server first
+COPY server/package*.json ./server/
+RUN cd server && npm install
+
+# Install dependencies for client
+COPY client/package*.json ./client/
+RUN cd client && npm install
+
+# Copy server source
+COPY server/ ./server/
+
+# Copy client source and build
+COPY client/ ./client/
+RUN cd client && npm run build
+
+# Set environment variables
 ENV NODE_ENV=production
 ENV PORT=5000
 
-# Expose the port the app runs on
+# Add volume for persistent data
+VOLUME [ "/app/database", "/app/uploads" ]
+
+# Expose the port
 EXPOSE 5000
+
+# Set working directory to server for the startup command
+WORKDIR /app/server
 
 # Command to run the application
 CMD ["npm", "start"]
