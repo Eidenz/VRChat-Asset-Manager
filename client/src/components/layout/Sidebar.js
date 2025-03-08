@@ -58,7 +58,7 @@ const Sidebar = () => {
         <Box sx={{ 
           width: 32, 
           height: 32, 
-          mr: 1.25,
+          mr: 2,
           filter: 'drop-shadow(0 0 8px #7e4dd2)',
           borderRadius: '8px',
           backgroundColor: 'primary.main',
@@ -66,7 +66,7 @@ const Sidebar = () => {
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-          <CubeIcon />
+          <img src="/logo.svg" alt="VRChat Asset Hub" style={{ width: 45, height: 45 }} />
         </Box>
         <Typography variant="h1">VRChat Asset Hub</Typography>
       </Box>
