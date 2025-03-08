@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Background with rounded corners -->
+  <rect width="200" height="200" rx="30" fill="#12141d" />
+  
+  <!-- Glowing outer ring -->
+  <circle cx="100" cy="100" r="70" fill="none" stroke="#7e4dd2" stroke-width="6" opacity="0.6">
+    <animate attributeName="opacity" values="0.4;0.8;0.4" dur="4s" repeatCount="indefinite" />
+  </circle>
+  
+  <!-- Inner circle -->
+  <circle cx="100" cy="100" r="55" fill="#1c1f2e" stroke="#7e4dd2" stroke-width="3" />
+  
+  <!-- 3D Cube representing VR assets -->
+  <g transform="translate(100, 100) scale(0.9) translate(-50, -50)">
+    <!-- Bottom face -->
+    <polygon points="30,70 70,85 110,70 70,55" fill="#9a6df7" opacity="0.7" />
+    
+    <!-- Right face -->
+    <polygon points="110,70 70,85 70,45 110,30" fill="#06d6a0" opacity="0.6" />
+    
+    <!-- Left face -->
+    <polygon points="30,70 70,85 70,45 30,30" fill="#7e4dd2" opacity="0.8" />
+    
+    <!-- Top face - invisible but included for completeness -->
+    <polygon points="30,30 70,45 110,30 70,15" fill="#7e4dd2" opacity="0" />
+    
+    <!-- Cube outlines -->
+    <polyline points="30,70 70,85 110,70 70,55 30,70" fill="none" stroke="white" stroke-width="1.5" opacity="0.8" />
+    <polyline points="70,85 70,45" fill="none" stroke="white" stroke-width="1.5" opacity="0.8" />
+    <polyline points="110,70 110,30 70,45 30,30 30,70" fill="none" stroke="white" stroke-width="1.5" opacity="0.8" />
+    <polyline points="110,30 70,15 30,30" fill="none" stroke="white" stroke-width="1.5" opacity="0.8" />
+    <line x1="70" y1="15" x2="70" y2="45" stroke="white" stroke-width="1.5" opacity="0.8" />
+  </g>
+  
+  <!-- Organization grid elements -->
+  <g opacity="0.8">
+    <rect x="60" y="125" width="20" height="20" rx="2" fill="#06d6a0" stroke="white" stroke-width="1" />
+    <rect x="90" y="125" width="20" height="20" rx="2" fill="#7e4dd2" stroke="white" stroke-width="1" />
+    <rect x="120" y="125" width="20" height="20" rx="2" fill="#9a6df7" stroke="white" stroke-width="1" />
+  </g>
+  
+  <!-- Circular glow effect -->
+  <circle cx="100" cy="100" r="85" fill="none" stroke="#7e4dd2" stroke-width="1" opacity="0.3">
+    <animate attributeName="r" values="85;88;85" dur="2s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="0.3;0.5;0.3" dur="2s" repeatCount="indefinite" />
+  </circle>
+
+  <!-- Subtle orbiting particle effects -->
+  <circle cx="0" cy="0" r="3" fill="#06d6a0" opacity="0.8">
+    <animateMotion 
+      path="M 100,40 a 60,60 0 1,1 0,120 a 60,60 0 1,1 0,-120"
+      dur="8s"
+      repeatCount="indefinite"
+      rotate="auto"
+    />
+  </circle>
+  
+  <circle cx="0" cy="0" r="2" fill="white" opacity="0.7">
+    <animateMotion 
+      path="M 100,35 a 65,65 0 1,1 0,130 a 65,65 0 1,1 0,-130"
+      dur="6s"
+      repeatCount="indefinite"
+      rotate="auto"
+    />
+  </circle>
+  
+  <circle cx="0" cy="0" r="2.5" fill="#9a6df7" opacity="0.8">
+    <animateMotion 
+      path="M 100,30 a 70,70 0 1,1 0,140 a 70,70 0 1,1 0,-140"
+      dur="10s"
+      repeatCount="indefinite"
+      rotate="auto"
+    />
+  </circle>
+</svg>
