@@ -958,7 +958,6 @@ const Avatars = () => {
               value={newAvatarData.filePath}
               onChange={handleNewAvatarChange}
               fullWidth
-              required
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -981,10 +980,10 @@ const Avatars = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleAddDialogClose}>Cancel</Button>
-          <Button 
+          <Button
             variant="contained" 
             onClick={handleSaveAvatar}
-            disabled={!newAvatarData.name || !newAvatarData.base || !newAvatarData.filePath || submitting}
+            disabled={submitting || uploadSuccess || !newAvatarData.name || !newAvatarData.base}
           >
             {submitting ? <CircularProgress size={24} /> : (isEditing ? 'Save Changes' : 'Add Avatar')}
           </Button>

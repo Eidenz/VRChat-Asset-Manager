@@ -48,7 +48,7 @@ async function createAvatar(avatar) {
     thumbnail, 
     dateAdded, 
     lastUsed, 
-    filePath, 
+    filePath || null,
     notes || null, 
     avatar.favorited ? 1 : 0,
     isCurrent ? 1 : 0
@@ -91,7 +91,7 @@ async function updateAvatar(id, avatar) {
     name, 
     base, 
     ...(thumbnail ? [thumbnail] : []),
-    filePath, 
+    filePath || null,
     notes || null, 
     favorited ? 1 : 0,
     isCurrent ? 1 : 0,
