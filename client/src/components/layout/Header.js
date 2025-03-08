@@ -8,6 +8,7 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { useTheme } from '../../context/ThemeContext';
 import AssetUploader from '../features/AssetUploader';
+import SearchResults from '../features/SearchResults';
 
 // Styled search input
 const Search = styled('div')(({ theme }) => ({
@@ -62,9 +63,12 @@ const HeaderButton = styled(IconButton)(({ theme }) => ({
   },
 }));
 
+// Update the Header component to include search functionality
 const Header = () => {
   const { mode, toggleTheme } = useTheme();
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   const handleOpenImportModal = () => {
     setImportModalOpen(true);
@@ -72,6 +76,29 @@ const Header = () => {
   
   const handleCloseImportModal = () => {
     setImportModalOpen(false);
+  };
+  
+  const handleOpenSearchModal = () => {
+    setSearchModalOpen(true);
+  };
+  
+  const handleCloseSearchModal = () => {
+    setSearchModalOpen(false);
+    // Don't clear the search query yet so it persists in the dialog
+  };
+  
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    // If they start typing, open the search modal
+    if (e.target.value && !searchModalOpen) {
+      setSearchModalOpen(true);
+    }
+  };
+  
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      setSearchModalOpen(true);
+    }
   };
 
   return (
@@ -92,6 +119,14 @@ const Header = () => {
           <StyledInputBase
             placeholder="Search assets, creators, collections..."
             inputProps={{ 'aria-label': 'search' }}
+            value={searchQuery}
+            onChange={handleSearchChange}
+            onKeyDown={handleSearchKeyDown}
+            onClick={() => {
+              if (searchQuery.trim()) {
+                setSearchModalOpen(true);
+              }
+            }}
           />
         </Search>
         
@@ -119,6 +154,13 @@ const Header = () => {
       >
         <AssetUploader onClose={handleCloseImportModal} />
       </Dialog>
+      
+      {/* Search Results Modal */}
+      <SearchResults 
+        open={searchModalOpen} 
+        onClose={handleCloseSearchModal} 
+        initialQuery={searchQuery}
+      />
     </>
   );
 };

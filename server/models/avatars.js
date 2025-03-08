@@ -1,5 +1,6 @@
 // server/models/avatars.js - Avatar model
 const db = require('../db/database');
+const { deleteImageFile } = require('../utils/imageUtils');
 
 /**
  * Get all avatars
@@ -30,15 +31,28 @@ async function getAvatarById(id) {
  * @returns {Promise<Object>} Created avatar with ID
  */
 async function createAvatar(avatar) {
-  const { name, base, thumbnail, filePath, notes } = avatar;
+  const { name, base, thumbnail, filePath, notes, isCurrent } = avatar;
   
   const dateAdded = new Date().toISOString();
   const lastUsed = dateAdded;
   
   const result = await db.run(`
-    INSERT INTO avatars (name, base, thumbnail, date_added, last_used, file_path, notes, favorited)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `, [name, base, thumbnail, dateAdded, lastUsed, filePath, notes || null, avatar.favorited ? 1 : 0]);
+    INSERT INTO avatars (
+      name, base, thumbnail, date_added, last_used, 
+      file_path, notes, favorited, is_current
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [
+    name, 
+    base, 
+    thumbnail, 
+    dateAdded, 
+    lastUsed, 
+    filePath, 
+    notes || null, 
+    avatar.favorited ? 1 : 0,
+    isCurrent ? 1 : 0
+  ]);
   
   return {
     id: result.lastID,
@@ -49,7 +63,8 @@ async function createAvatar(avatar) {
     lastUsed,
     filePath,
     notes,
-    favorited: avatar.favorited || false
+    favorited: avatar.favorited || false,
+    isCurrent: isCurrent || false
   };
 }
 
@@ -60,7 +75,7 @@ async function createAvatar(avatar) {
  * @returns {Promise<boolean>} Success status
  */
 async function updateAvatar(id, avatar) {
-  const { name, base, thumbnail, filePath, notes, favorited } = avatar;
+  const { name, base, thumbnail, filePath, notes, favorited, isCurrent } = avatar;
   
   const result = await db.run(`
     UPDATE avatars 
@@ -69,7 +84,8 @@ async function updateAvatar(id, avatar) {
         ${thumbnail ? 'thumbnail = ?,' : ''}
         file_path = ?,
         notes = ?,
-        favorited = ?
+        favorited = ?,
+        is_current = ?
     WHERE id = ?
   `, [
     name, 
@@ -77,28 +93,33 @@ async function updateAvatar(id, avatar) {
     ...(thumbnail ? [thumbnail] : []),
     filePath, 
     notes || null, 
-    favorited ? 1 : 0, 
+    favorited ? 1 : 0,
+    isCurrent ? 1 : 0,
     id
   ]);
   
   return result.changes > 0;
 }
 
-/**
- * Update avatar last used date
- * @param {number} id - Avatar ID
- * @returns {Promise<boolean>} Success status
- */
-async function setAvatarAsCurrent(id) {
+async function toggleCurrentStatus(id) {
+  // Get current status
+  const avatar = await getAvatarById(id);
+  if (!avatar) throw new Error('Avatar not found');
+  
+  const newStatus = avatar.is_current === 1 ? 0 : 1;
   const now = new Date().toISOString();
   
   const result = await db.run(`
     UPDATE avatars 
-    SET last_used = ? 
+    SET is_current = ?, 
+        last_used = ?
     WHERE id = ?
-  `, [now, id]);
+  `, [newStatus, now, id]);
   
-  return result.changes > 0;
+  return {
+    success: result.changes > 0,
+    isCurrent: newStatus === 1
+  };
 }
 
 /**
@@ -131,10 +152,19 @@ async function toggleFavorite(id) {
  * @returns {Promise<boolean>} Success status
  */
 async function deleteAvatar(id) {
+  // First get the avatar to get its thumbnail URL
+  const avatar = await getAvatarById(id);
+  if (!avatar) return false;
+  
   const result = await db.run(`
     DELETE FROM avatars 
     WHERE id = ?
   `, [id]);
+  
+  // If deletion was successful, delete the image file
+  if (result.changes > 0 && avatar.thumbnail) {
+    deleteImageFile(avatar.thumbnail);
+  }
   
   return result.changes > 0;
 }
@@ -155,7 +185,7 @@ module.exports = {
   getAvatarById,
   createAvatar,
   updateAvatar,
-  setAvatarAsCurrent,
+  toggleCurrentStatus,
   toggleFavorite,
   deleteAvatar,
   getAllAvatarBases

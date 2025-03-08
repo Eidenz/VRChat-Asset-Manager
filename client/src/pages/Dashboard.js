@@ -148,19 +148,18 @@ const Dashboard = () => {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                     <Typography variant="h2">Recently Added Assets</Typography>
                   </Box>
-                  <Grid container spacing={2}>
-                    {assets.recent.map((asset, index) => (
-                      <Grid item xs={12} sm={6} md={4} key={asset.id}>
-                        <motion.div
-                          initial={{ y: 20, opacity: 0 }}
-                          animate={{ y: 0, opacity: 1 }}
-                          transition={{ duration: 0.3, delay: 0.2 + index * 0.05 }}
-                        >
-                          <AssetCard asset={asset} />
-                        </motion.div>
-                      </Grid>
-                    ))}
-                  </Grid>
+                  {assets.recent.map((recentAsset, assetIndex) => (
+                    <Grid item xs={12} sm={6} md={4} key={recentAsset.id} sx={{ height: '100%' }}>
+                      <motion.div
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ duration: 0.3, delay: 0.2 + assetIndex * 0.05 }}
+                        style={{ height: '100%' }}
+                      >
+                        <AssetCard asset={recentAsset} />
+                      </motion.div>
+                    </Grid>
+                  ))}
                 </Box>
               </motion.div>
 

@@ -65,6 +65,7 @@ const TagsContainer = styled(Box)(({ theme }) => ({
   flexWrap: 'wrap',
   gap: 6,
   marginBottom: 16,
+  minHeight: 30, // Add a minimum height for tags container
 }));
 
 const StyledTag = styled(Chip)(({ theme }) => ({
@@ -185,7 +186,12 @@ const AssetCard = ({ asset: propAsset }) => {
           </StyledFavoriteButton>
         </Box>
         
-        <CardContent sx={{ flexGrow: 1 }}>
+        <CardContent sx={{ 
+          flexGrow: 1, 
+          display: 'flex', 
+          flexDirection: 'column',
+          height: 280, // Set a fixed height for card content
+        }}>
           <Typography variant="h3" sx={{ mb: 0.5 }}>{asset.name}</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
             By: {asset.creator}

@@ -1,5 +1,6 @@
 // server/models/assets.js - Asset model
 const db = require('../db/database');
+const { deleteImageFile } = require('../utils/imageUtils');
 
 /**
  * Get all assets with their tags and compatible avatars
@@ -397,6 +398,13 @@ async function deleteAsset(id) {
   await db.run('BEGIN TRANSACTION');
   
   try {
+    // First get the asset to get its thumbnail URL
+    const asset = await getAssetById(id);
+    if (!asset) {
+      await db.run('ROLLBACK');
+      return false;
+    }
+    
     // Delete relations first
     await db.run('DELETE FROM asset_tags WHERE asset_id = ?', [id]);
     await db.run('DELETE FROM asset_compatible_avatars WHERE asset_id = ?', [id]);
@@ -407,6 +415,11 @@ async function deleteAsset(id) {
     
     // Commit the transaction
     await db.run('COMMIT');
+    
+    // If deletion was successful, delete the image file
+    if (result.changes > 0 && asset.thumbnail) {
+      deleteImageFile(asset.thumbnail);
+    }
     
     return result.changes > 0;
     

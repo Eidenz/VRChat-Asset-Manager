@@ -51,6 +51,8 @@ const StyledChip = styled(Chip)(({ theme }) => ({
 
 const InfoItem = styled(Box)(({ theme }) => ({
   marginBottom: theme.spacing(3),
+  height: 70, // Set a fixed height for info items
+  overflow: 'hidden'
 }));
 
 const InfoLabel = styled(Typography)(({ theme }) => ({

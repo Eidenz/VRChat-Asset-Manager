@@ -24,7 +24,8 @@ router.get('/', async (req, res) => {
       lastUsed: avatar.last_used,
       filePath: avatar.file_path,
       notes: avatar.notes,
-      favorited: avatar.favorited === 1
+      favorited: avatar.favorited === 1,
+      isCurrent: avatar.is_current === 1  // Add this line
     }));
     
     res.json({ success: true, data: formattedAvatars });
@@ -156,7 +157,7 @@ router.put('/:id',
 
 /**
  * @route   PUT /api/avatars/:id/current
- * @desc    Set avatar as current
+ * @desc    Toggle avatar current status
  * @access  Public
  */
 router.put('/:id/current',
@@ -168,15 +169,17 @@ router.put('/:id/current',
     }
     
     try {
-      const success = await avatarsModel.setAvatarAsCurrent(req.params.id);
+      const result = await avatarsModel.toggleCurrentStatus(req.params.id);
       
-      if (!success) {
-        return res.status(404).json({ success: false, message: 'Avatar not found' });
-      }
-      
-      res.json({ success: true, message: 'Avatar set as current' });
+      res.json({
+        success: result.success,
+        isCurrent: result.isCurrent,
+        message: result.isCurrent ? 
+          'Avatar set as current' : 
+          'Avatar removed from current'
+      });
     } catch (err) {
-      console.error('Error setting avatar as current:', err.message);
+      console.error('Error toggling avatar current status:', err.message);
       res.status(500).json({ success: false, message: 'Server error' });
     }
   }

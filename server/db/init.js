@@ -55,7 +55,8 @@ db.serialize(() => {
     last_used TEXT NOT NULL,
     file_path TEXT NOT NULL,
     notes TEXT,
-    favorited INTEGER DEFAULT 0
+    favorited INTEGER DEFAULT 0,
+    is_current INTEGER DEFAULT 0
   )`);
   
   db.run(`CREATE TABLE collections (

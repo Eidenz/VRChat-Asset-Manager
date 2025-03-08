@@ -232,16 +232,22 @@ export const ApiProvider = ({ children }) => {
   };
 
   // Function to set avatar as current
-  const setAvatarAsCurrent = async (avatarId) => {
+  const toggleAvatarCurrent = async (avatarId) => {
     try {
-      await avatarsAPI.setCurrent(avatarId);
+      const response = await avatarsAPI.toggleCurrent(avatarId);
       
-      // Refetch all avatars to get updated lastUsed dates
-      await fetchAvatars();
+      // Update avatars state with the new current status
+      setAvatars(prev =>
+        prev.map(avatar =>
+          avatar.id === avatarId 
+            ? { ...avatar, isCurrent: response.isCurrent } 
+            : avatar
+        )
+      );
       
-      return true;
+      return response.isCurrent;
     } catch (error) {
-      console.error(`Error setting avatar ${avatarId} as current:`, error);
+      console.error(`Error toggling current status for avatar ${avatarId}:`, error);
       throw error;
     }
   };
@@ -363,7 +369,7 @@ export const ApiProvider = ({ children }) => {
     // Action functions
     toggleAssetFavorite,
     toggleAvatarFavorite,
-    setAvatarAsCurrent,
+    toggleAvatarCurrent,
     addAssetToCollection,
     removeAssetFromCollection,
     createCollection,

@@ -34,6 +34,7 @@ import SortIcon from '@mui/icons-material/Sort';
 import FolderIcon from '@mui/icons-material/Folder';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import ViewListIcon from '@mui/icons-material/ViewList';
+import ImageUploader from '../components/ui/ImageUploader';
 
 // Import API context
 import { useApi } from '../context/ApiContext';
@@ -50,6 +51,7 @@ const Collections = () => {
     name: '',
     description: '',
     folderPath: '',
+    thumbnail: '', // Add this line
   });
   const [anchorEl, setAnchorEl] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
@@ -87,6 +89,13 @@ const Collections = () => {
     setAnchorEl(null);
   };
 
+  const handleImageUpload = (imageUrl) => {
+    setFormData({
+      ...formData,
+      thumbnail: imageUrl,
+    });
+  };
+
   const handleOpenCreateDialog = () => {
     setIsEditing(false);
     setFormData({
@@ -103,6 +112,7 @@ const Collections = () => {
       name: currentCollection.name,
       description: currentCollection.description || '',
       folderPath: currentCollection.folderPath || '',
+      thumbnail: currentCollection.thumbnail, // Add this line
     });
     setCreateEditDialogOpen(true);
     handleCloseMenu();
@@ -136,22 +146,19 @@ const Collections = () => {
         // Update existing collection
         await collectionsAPI.update(currentCollection.id, {
           ...formData,
-          // Preserve the thumbnail if not provided in form
-          thumbnail: currentCollection.thumbnail
+          // Use the uploaded thumbnail if available, otherwise keep the current one
+          thumbnail: formData.thumbnail || currentCollection.thumbnail
         });
-        
-        // Add this line to refresh collections after updating
-        await fetchCollections();
       } else {
         // Create new collection
+        // If no custom thumbnail was uploaded, generate a random one
         const randomId = Math.floor(Math.random() * 200);
-        const thumbnail = `https://picsum.photos/id/${randomId}/220/120`;
+        const thumbnail = formData.thumbnail || `https://picsum.photos/id/${randomId}/220/120`;
         
         await createCollection({
           ...formData,
           thumbnail
         });
-        // No need to call fetchCollections here as createCollection already updates the state
       }
       
       handleCloseDialog();
@@ -471,12 +478,17 @@ const Collections = () => {
         fullWidth
       >
         <DialogTitle>{isEditing ? 'Edit Collection' : 'Create New Collection'}</DialogTitle>
-        <DialogContent>
+          <DialogContent>
           {error && (
             <Alert severity="error" sx={{ mb: 2, mt: 1 }}>
               {error}
             </Alert>
           )}
+          
+          <ImageUploader 
+            onImageUpload={handleImageUpload} 
+            initialImage={isEditing ? currentCollection?.thumbnail : ''}
+          />
           
           <TextField
             autoFocus

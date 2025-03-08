@@ -1,5 +1,5 @@
 // src/pages/Avatars.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -29,7 +29,8 @@ import {
   InputLabel,
   Select,
   FormControlLabel,
-  Switch
+  Switch,
+  Alert
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { motion } from 'framer-motion';
@@ -51,6 +52,7 @@ import CloseIcon from '@mui/icons-material/Close';
 
 // Import API context
 import { useApi } from '../context/ApiContext';
+import ImageUploader from '../components/ui/ImageUploader';
 
 // Styled components for avatar card
 const StyledAvatarCard = styled(Card)(({ theme, active }) => ({
@@ -104,7 +106,7 @@ const Avatars = () => {
     errors,
     fetchAvatars,
     toggleAvatarFavorite,
-    setAvatarAsCurrent,
+    toggleAvatarCurrent,
     avatarsAPI
   } = useApi();
 
@@ -123,11 +125,15 @@ const Avatars = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [newAvatarData, setNewAvatarData] = useState({
     name: '',
     base: '',
     filePath: '',
-    notes: ''
+    notes: '',
+    thumbnail: ''
   });
   const [availableBases, setAvailableBases] = useState([]);
   const [loadingBases, setLoadingBases] = useState(false);
@@ -207,12 +213,7 @@ const Avatars = () => {
 
   // Check if an avatar is the currently active one
   const isCurrentAvatar = (avatar) => {
-    // Assuming the first avatar in the lastUsed sort is the current one
-    const sortedByLastUsed = [...avatars].sort((a, b) => 
-      new Date(b.lastUsed) - new Date(a.lastUsed)
-    );
-    
-    return sortedByLastUsed.length > 0 && sortedByLastUsed[0].id === avatar.id;
+    return avatar.isCurrent;
   };
 
   // Event handlers
@@ -289,17 +290,20 @@ const Avatars = () => {
   };
 
   const handleAddDialogOpen = () => {
+    setIsEditing(false);
+    setNewAvatarData({
+      name: '',
+      base: '',
+      filePath: '',
+      notes: '',
+      thumbnail: ''
+    });
+    setError('');
     setAddDialogOpen(true);
   };
 
   const handleAddDialogClose = () => {
     setAddDialogOpen(false);
-    setNewAvatarData({
-      name: '',
-      base: '',
-      filePath: '',
-      notes: ''
-    });
   };
 
   const handleDetailsDialogClose = () => {
@@ -321,8 +325,10 @@ const Avatars = () => {
       name: selectedAvatar.name,
       base: selectedAvatar.base,
       filePath: selectedAvatar.filePath,
-      notes: selectedAvatar.notes
+      notes: selectedAvatar.notes,
+      thumbnail: selectedAvatar.thumbnail
     });
+    setIsEditing(true);
     setAddDialogOpen(true);
     handleCloseMenu();
   };
@@ -335,25 +341,44 @@ const Avatars = () => {
     }));
   };
 
+  const handleImageUpload = (imageUrl) => {
+    setNewAvatarData(prev => ({
+      ...prev,
+      thumbnail: imageUrl
+    }));
+  };
+
   const handleSaveAvatar = async () => {
+    // Validate form
+    if (!newAvatarData.name.trim()) {
+      setError('Avatar name is required');
+      return;
+    }
+
+    setSubmitting(true);
+    setError('');
+    
     try {
-      // For new avatar
-      if (!selectedAvatar) {
-        // Generate a random placeholder thumbnail URL
-        const randomId = Math.floor(Math.random() * 200);
-        const thumbnail = `https://picsum.photos/id/${randomId}/160/180`;
-        
-        // Create new avatar
-        await avatarsAPI.create({
-          ...newAvatarData,
-          thumbnail,
-          favorited: false
-        });
-      } else {
+      if (isEditing) {
         // Update existing avatar
         await avatarsAPI.update(selectedAvatar.id, {
           ...newAvatarData,
-          favorited: selectedAvatar.favorited
+          // Use the uploaded thumbnail if available, otherwise keep the current one
+          thumbnail: newAvatarData.thumbnail || selectedAvatar.thumbnail,
+          favorited: selectedAvatar.favorited,
+          isCurrent: selectedAvatar.isCurrent
+        });
+      } else {
+        // Create new avatar
+        // If no custom thumbnail was uploaded, generate a random one
+        const randomId = Math.floor(Math.random() * 200);
+        const thumbnail = newAvatarData.thumbnail || `https://picsum.photos/id/${randomId}/160/180`;
+        
+        await avatarsAPI.create({
+          ...newAvatarData,
+          thumbnail,
+          favorited: false,
+          isCurrent: false
         });
       }
       
@@ -364,7 +389,9 @@ const Avatars = () => {
       handleAddDialogClose();
     } catch (error) {
       console.error('Error saving avatar:', error);
-      // You could add error handling UI here
+      setError(error.message || 'Failed to save avatar');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -382,12 +409,12 @@ const Avatars = () => {
     }
   };
 
-  const handleSetAsCurrent = async () => {
+  const handleToggleCurrent = async () => {
     try {
-      await setAvatarAsCurrent(selectedAvatar.id);
+      await toggleAvatarCurrent(selectedAvatar.id);
       handleCloseMenu();
     } catch (error) {
-      console.error('Error setting avatar as current:', error);
+      console.error('Error toggling current status:', error);
     }
   };
   
@@ -767,9 +794,18 @@ const Avatars = () => {
         open={Boolean(menuAnchorEl)}
         onClose={handleCloseMenu}
       >
-        <MenuItem onClick={handleSetAsCurrent}>
-          <PlayArrowIcon fontSize="small" sx={{ mr: 1 }} />
-          Set as Current
+        <MenuItem onClick={handleToggleCurrent}>
+          {selectedAvatar?.isCurrent ? (
+            <>
+              <CheckCircleIcon color="success" fontSize="small" sx={{ mr: 1 }} />
+              Remove from Current
+            </>
+          ) : (
+            <>
+              <PlayArrowIcon fontSize="small" sx={{ mr: 1 }} />
+              Set as Current
+            </>
+          )}
         </MenuItem>
         <MenuItem onClick={() => {
           handleToggleFavorite(selectedAvatar);
@@ -800,10 +836,21 @@ const Avatars = () => {
       {/* Add/Edit Avatar Dialog */}
       <Dialog open={addDialogOpen} onClose={handleAddDialogClose} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {selectedAvatar ? 'Edit Avatar' : 'Add New Avatar'}
+          {isEditing ? 'Edit Avatar' : 'Add New Avatar'}
         </DialogTitle>
         <DialogContent>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2, mt: 1 }}>
+              {error}
+            </Alert>
+          )}
+          
           <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <ImageUploader 
+              onImageUpload={handleImageUpload} 
+              initialImage={isEditing ? selectedAvatar?.thumbnail : ''}
+            />
+            
             <TextField 
               label="Avatar Name"
               name="name"
@@ -865,9 +912,9 @@ const Avatars = () => {
           <Button 
             variant="contained" 
             onClick={handleSaveAvatar}
-            disabled={!newAvatarData.name || !newAvatarData.base || !newAvatarData.filePath}
+            disabled={!newAvatarData.name || !newAvatarData.base || !newAvatarData.filePath || submitting}
           >
-            {selectedAvatar ? 'Save Changes' : 'Add Avatar'}
+            {submitting ? <CircularProgress size={24} /> : (isEditing ? 'Save Changes' : 'Add Avatar')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -905,15 +952,15 @@ const Avatars = () => {
                   <Button
                     fullWidth
                     variant="contained"
-                    startIcon={<PlayArrowIcon />}
+                    startIcon={isCurrentAvatar(selectedAvatar) ? <CheckCircleIcon /> : <PlayArrowIcon />}
                     onClick={() => {
-                      handleSetAsCurrent();
+                      handleToggleCurrent();
                       handleDetailsDialogClose();
                     }}
-                    disabled={isCurrentAvatar(selectedAvatar)}
+                    color={isCurrentAvatar(selectedAvatar) ? "success" : "primary"}
                     sx={{ mb: 2 }}
                   >
-                    {isCurrentAvatar(selectedAvatar) ? 'Current Avatar' : 'Set as Current'}
+                    {isCurrentAvatar(selectedAvatar) ? 'Remove from Current' : 'Set as Current'}
                   </Button>
                   <Button
                     fullWidth

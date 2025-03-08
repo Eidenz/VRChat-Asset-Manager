@@ -1,6 +1,7 @@
 // server/models/collections.js - Collection model
 const db = require('../db/database');
 const assetsModel = require('./assets');
+const { deleteImageFile } = require('../utils/imageUtils');
 
 /**
  * Get all collections with item count
@@ -127,6 +128,10 @@ async function updateCollection(id, collection) {
  * @returns {Promise<boolean>} Success status
  */
 async function deleteCollection(id) {
+  // Get the collection first to get its thumbnail URL
+  const collection = await getCollectionById(id);
+  if (!collection) return false;
+  
   // Start a transaction
   await db.run('BEGIN TRANSACTION');
   
@@ -139,6 +144,11 @@ async function deleteCollection(id) {
     
     // Commit the transaction
     await db.run('COMMIT');
+    
+    // If deletion was successful, delete the image file
+    if (result.changes > 0 && collection.thumbnail) {
+      deleteImageFile(collection.thumbnail);
+    }
     
     return result.changes > 0;
     

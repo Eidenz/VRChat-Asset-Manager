@@ -1,4 +1,6 @@
 // server/routes/uploads.js
+// Correct export pattern for router and helper function
+
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
@@ -84,4 +86,63 @@ router.post('/image', upload.single('image'), (req, res) => {
   }
 });
 
+/**
+ * @route   DELETE /api/uploads/image/:filename
+ * @desc    Delete an uploaded image file
+ * @access  Public
+ */
+router.delete('/image/:filename', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    
+    // Validate filename to prevent directory traversal attacks
+    if (!/^[a-zA-Z0-9_-]+\.[a-zA-Z0-9]+$/.test(filename)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid filename format'
+      });
+    }
+    
+    const filePath = path.join(uploadDir, filename);
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'File not found'
+      });
+    }
+    
+    // Delete the file
+    fs.unlinkSync(filePath);
+    
+    res.json({
+      success: true,
+      message: 'File deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting file:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting file'
+    });
+  }
+});
+
+// Helper function to extract filename from URL
+const getFilenameFromUrl = (url) => {
+  if (!url) return null;
+  
+  // Handle only URLs with /uploads/ path
+  if (!url.includes('/uploads/')) return null;
+  
+  // Extract the filename from the URL
+  const parts = url.split('/');
+  return parts[parts.length - 1];
+};
+
+// Add the helper function as a property of the router object
+router.getFilenameFromUrl = getFilenameFromUrl;
+
+// Export the router with the attached helper method
 module.exports = router;
