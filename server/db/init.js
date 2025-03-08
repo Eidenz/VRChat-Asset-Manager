@@ -127,17 +127,6 @@ db.serialize(() => {
   db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['autoSync', '1']);
   db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['darkMode', '1']);
   db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['showFilePaths', '1']);
-
-  // Insert default avatar bases
-  const defaultBases = [
-    { id: 'humanMale4', name: 'HumanMale4.2' },
-    { id: 'humanFemale4', name: 'HumanFemale4.2' },
-    { id: 'humanSlim3', name: 'HumanSlim3.1' }
-  ];
-  
-  defaultBases.forEach(base => {
-    db.run('INSERT INTO avatar_bases (id, name) VALUES (?, ?)', [base.id, base.name]);
-  });
   
   // Insert default asset types
   const defaultTypes = [
