@@ -983,7 +983,7 @@ const Avatars = () => {
           <Button
             variant="contained" 
             onClick={handleSaveAvatar}
-            disabled={submitting || uploadSuccess || !newAvatarData.name || !newAvatarData.base}
+            disabled={submitting || !newAvatarData.name || !newAvatarData.base}
           >
             {submitting ? <CircularProgress size={24} /> : (isEditing ? 'Save Changes' : 'Add Avatar')}
           </Button>
