@@ -1,5 +1,7 @@
 # VRChat Asset Manager
 
+![Screenshot 2025-03-08 182009](https://github.com/user-attachments/assets/1982f2f2-ee0e-4d20-a5d9-9ba15666a915)
+
 A web companion app for managing VRChat assets, including avatars, clothing, props, textures, and more.
 
 ## ⚠️ Disclaimer / AI-Generated Project Warning
