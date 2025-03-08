@@ -33,7 +33,7 @@ VOLUME [ "/app/database", "/app/uploads" ]
 EXPOSE 5000
 
 # Make sure the entrypoint script has execute permissions
-RUN echo '#!/bin/sh\nchmod -R 777 /app/uploads\nchmod -R 777 /app/database\ncd /app/server && npm start' > /app/entrypoint.sh
+COPY docker-entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
 # Set working directory to server for the startup command
