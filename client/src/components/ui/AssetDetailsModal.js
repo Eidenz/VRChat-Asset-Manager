@@ -420,28 +420,6 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
                     </ListItem>
                   ))}
                 </List>
-
-                <Typography variant="body1" sx={{ mb: 2 }}>
-                  For best results, ensure your avatar uses standard bone naming and has a humanoid rig.
-                </Typography>
-
-                <Box sx={{ mt: 3 }}>
-                  <Typography variant="h3" sx={{ mb: 2 }}>Installation Notes</Typography>
-                  <Box sx={{ bgcolor: 'background.default', p: 2, borderRadius: 2 }}>
-                    <Typography variant="body1" sx={{ mb: 1 }}>
-                      1. Extract the package into your Unity project
-                    </Typography>
-                    <Typography variant="body1" sx={{ mb: 1 }}>
-                      2. Drag the prefab onto your avatar in the hierarchy
-                    </Typography>
-                    <Typography variant="body1" sx={{ mb: 1 }}>
-                      3. Adjust the position as needed
-                    </Typography>
-                    <Typography variant="body1">
-                      4. Add the provided animator controller layers to your avatar's FX controller
-                    </Typography>
-                  </Box>
-                </Box>
               </Box>
             )}
             
@@ -491,7 +469,6 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
         <Button onClick={handleClose} sx={{ color: 'text.secondary' }}>Close</Button>
       </DialogActions>
 
-      // Add delete confirmation dialog - add this at the end of the component, before the final return:
       <Dialog
         open={deleteConfirmOpen}
         onClose={handleCloseDeleteConfirm}
