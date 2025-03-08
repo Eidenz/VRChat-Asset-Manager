@@ -2,6 +2,21 @@
 
 A web companion app for managing VRChat assets, including avatars, clothing, props, textures, and more.
 
+## ⚠️ Disclaimer / AI-Generated Project Warning
+
+**This project was entirely coded using AI (Claude 3.7 Sonnet Thinking).**
+
+This code is provided as-is. While effort has been made to ensure functionality, it comes with no warranty or guarantee of support.
+
+**Please note:**
+
+- This project is shared without dedicated support resources.
+- Use of this code is at your own risk.
+- No official support will be provided for setup, usage, customization, or troubleshooting.
+- Community contributions and improvements via pull requests are welcome, but please do not expect personalized assistance.
+
+For any issues or questions, consider consulting online resources, community forums, or attempting to resolve problems independently.
+
 ## Features
 
 - Organize and manage VRChat avatar assets by categories
@@ -51,13 +66,13 @@ The easiest way to get started is using Docker:
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/vrchat-asset-manager.git
+   git clone git@github.com:Eidenz/VRChat-Asset-Manager.git
    cd vrchat-asset-manager
    ```
 
 2. Build and start the Docker containers:
    ```
-   docker-compose up -d
+   docker-compose up -d --build
    ```
 
 3. Initialize the database (first time only):
@@ -71,7 +86,7 @@ The easiest way to get started is using Docker:
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/vrchat-asset-manager.git
+   git clone git@github.com:Eidenz/VRChat-Asset-Manager.git
    cd vrchat-asset-manager
    ```
 

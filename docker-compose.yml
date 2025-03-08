@@ -3,7 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: git.eidenz.moe/eidenz/vrchat-asset-manager:latest
     container_name: vrchat-asset-manager
     ports:
       - "5000:5000"
