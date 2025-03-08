@@ -1,16 +1,16 @@
 // server/routes/uploads.js
+// Correct export pattern for router and helper function
+
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Ensure upload directory exists with proper permissions
+// Ensure upload directory exists
 const uploadDir = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
-  // Ensure everyone can write to this directory
-  fs.chmodSync(uploadDir, 0o777);
 }
 
 // Configure storage
@@ -60,10 +60,6 @@ router.post('/image', upload.single('image'), (req, res) => {
     }
 
     console.log('File uploaded:', req.file);
-    console.log('Upload directory:', uploadDir);
-    
-    // Ensure proper permissions on the uploaded file
-    fs.chmodSync(req.file.path, 0o666);
 
     // Create absolute URL for the uploaded file
     // This ensures it will work regardless of how the app is hosted

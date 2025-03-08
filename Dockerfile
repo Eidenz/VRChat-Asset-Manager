@@ -3,9 +3,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Create directory for uploads and database with proper permissions
-RUN mkdir -p /app/uploads && chmod 777 /app/uploads
-RUN mkdir -p /app/database && chmod 777 /app/database
+# Create directory for uploads
+RUN mkdir -p /app/uploads
+RUN mkdir -p /app/database
 
 # Install dependencies for server first
 COPY server/package*.json ./server/
@@ -32,12 +32,8 @@ VOLUME [ "/app/database", "/app/uploads" ]
 # Expose the port
 EXPOSE 5000
 
-# Make sure the entrypoint script has execute permissions
-COPY docker-entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-
 # Set working directory to server for the startup command
 WORKDIR /app/server
 
 # Command to run the application
-CMD ["/app/entrypoint.sh"]
+CMD ["npm", "start"]
