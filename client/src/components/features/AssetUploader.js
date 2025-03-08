@@ -163,22 +163,11 @@ const AssetUploader = ({ onClose }) => {
         }
         setAssetTypes(typesList);
         
-        // Fetch avatar bases
+        // Fetch avatar bases - only from API now
         try {
           const basesResponse = await avatarsAPI.getBases();
           const retrievedBases = basesResponse.data || [];
           setAvatarBases(retrievedBases);
-          
-          // Try to load custom bases from localStorage
-          try {
-            const savedCustomBases = localStorage.getItem('customAvatarBases');
-            if (savedCustomBases) {
-              const parsedBases = JSON.parse(savedCustomBases);
-              setCustomAvatarBases(parsedBases);
-            }
-          } catch (localStorageError) {
-            console.error('Error loading custom bases from localStorage:', localStorageError);
-          }
         } catch (basesError) {
           console.error('Error loading avatar bases:', basesError);
           setAvatarBases([]);
@@ -198,6 +187,7 @@ const AssetUploader = ({ onClose }) => {
         
         // Set fallback values
         setAssetTypes(FALLBACK_ASSET_TYPES);
+        setAvatarBases([]);
       } finally {
         setLoadingOptions(false);
       }
@@ -235,40 +225,39 @@ const AssetUploader = ({ onClose }) => {
     }
   };
   
-  const handleAddNewAvatarBase = () => {
+  const handleAddNewAvatarBase = async () => {
     if (newAvatarBaseName) {
-      // Generate an ID if not provided
-      const baseId = newAvatarBaseId || newAvatarBaseName.toLowerCase().replace(/\s+/g, '');
-      
-      // Create the new avatar base
-      const newBase = {
-        id: baseId,
-        name: newAvatarBaseName
-      };
-      
-      // Add to custom avatar bases
-      const updatedCustomBases = [...customAvatarBases, newBase];
-      setCustomAvatarBases(updatedCustomBases);
-      
-      // Save to localStorage for persistence
       try {
-        localStorage.setItem('customAvatarBases', JSON.stringify(updatedCustomBases));
+        // Generate an ID if not provided
+        const baseId = newAvatarBaseId || newAvatarBaseName.toLowerCase().replace(/\s+/g, '');
+        
+        // Call API to create the base
+        const response = await avatarsAPI.createBase({
+          id: baseId,
+          name: newAvatarBaseName
+        });
+        
+        const newBase = response.data;
+        
+        // Add the new base to the available bases
+        setAvatarBases(prevBases => [...prevBases, newBase]);
+        
+        // If the asset is compatible with the new avatar base, add it to compatibleWith
+        if (!assetData.compatibleWith.includes(newAvatarBaseName)) {
+          setAssetData(prev => ({
+            ...prev,
+            compatibleWith: [...prev.compatibleWith, newAvatarBaseName]
+          }));
+        }
+        
+        // Reset input fields
+        setNewAvatarBaseInput('');
+        setNewAvatarBaseId('');
+        setShowNewAvatarBaseInput(false);
       } catch (error) {
-        console.error('Error saving custom bases to localStorage:', error);
+        console.error('Error creating avatar base:', error);
+        setUploadError('Failed to create avatar base. Please try again.');
       }
-      
-      // If the asset is compatible with the new avatar base, add it to compatibleWith
-      if (!assetData.compatibleWith.includes(newAvatarBaseName)) {
-        setAssetData(prev => ({
-          ...prev,
-          compatibleWith: [...prev.compatibleWith, newAvatarBaseName]
-        }));
-      }
-      
-      // Reset input fields
-      setNewAvatarBaseInput('');
-      setNewAvatarBaseId('');
-      setShowNewAvatarBaseInput(false);
     }
   };
 
@@ -732,7 +721,7 @@ const AssetUploader = ({ onClose }) => {
                     )}
                     MenuProps={MenuProps}
                   >
-                    {allAvatarBases.map((base) => (
+                    {avatarBases.map((base) => (
                       <MenuItem key={base.id} value={base.name}>
                         <Checkbox checked={assetData.compatibleWith.indexOf(base.name) > -1} />
                         <ListItemText primary={base.name} />
@@ -742,7 +731,7 @@ const AssetUploader = ({ onClose }) => {
                     {/* Add a divider before the "Add new avatar base" option */}
                     <Divider sx={{ my: 1 }} />
                     
-                    {/* Use MenuItem for "Add new avatar base" but with special handling */}
+                    {/* Option to add new avatar base */}
                     <MenuItem
                       sx={{
                         fontStyle: 'italic',
@@ -757,7 +746,7 @@ const AssetUploader = ({ onClose }) => {
                         // Show the dialog to add a new avatar base
                         setShowNewAvatarBaseInput(true);
                       }}
-                      // This is the key part - we need to set a special value that we filter out
+                      // Set a special value that we filter out
                       value={ADD_NEW_AVATAR_BASE_VALUE}
                     >
                       <AddIcon fontSize="small" sx={{ mr: 1 }} />

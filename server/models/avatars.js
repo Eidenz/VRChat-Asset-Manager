@@ -180,6 +180,24 @@ async function getAllAvatarBases() {
   `);
 }
 
+/**
+ * Create a new avatar base
+ * @param {Object} base - Base object with id and name
+ * @returns {Promise<Object>} The created base
+ */
+async function createAvatarBase(base) {
+  try {
+    const result = await db.run(
+      'INSERT INTO avatar_bases (id, name) VALUES (?, ?)',
+      [base.id, base.name]
+    );
+    
+    return { id: base.id, name: base.name };
+  } catch (error) {
+    throw error;
+  }
+}
+
 module.exports = {
   getAllAvatars,
   getAvatarById,
@@ -188,5 +206,6 @@ module.exports = {
   toggleCurrentStatus,
   toggleFavorite,
   deleteAvatar,
-  getAllAvatarBases
+  getAllAvatarBases,
+  createAvatarBase
 };

@@ -60,6 +60,7 @@ const avatarsAPI = {
   toggleFavorite: (id) => api.put(`/avatars/${id}/favorite`),
   delete: (id) => api.delete(`/avatars/${id}`),
   getBases: () => api.get('/avatars/bases/all'),
+  createBase: (data) => api.post('/avatars/bases', data),
 };
 
 // Asset API services

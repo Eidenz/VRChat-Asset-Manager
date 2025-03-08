@@ -230,53 +230,37 @@ const Avatars = () => {
     }
   };
 
-  const handleAddNewAvatarBase = () => {
+  const handleAddNewAvatarBase = async () => {
     if (newAvatarBaseName) {
-      // Generate an ID if not provided
-      const baseId = newAvatarBaseId || newAvatarBaseName.toLowerCase().replace(/\s+/g, '');
-      
-      // Create the new avatar base
-      const newBase = {
-        id: baseId,
-        name: newAvatarBaseName
-      };
-      
-      // Get existing custom bases from localStorage
-      let customBases = [];
       try {
-        const savedCustomBases = localStorage.getItem('customAvatarBases');
-        if (savedCustomBases) {
-          customBases = JSON.parse(savedCustomBases);
+        // Generate an ID if not provided
+        const baseId = newAvatarBaseId || newAvatarBaseName.toLowerCase().replace(/\s+/g, '');
+        
+        // Call API to create the base
+        const response = await avatarsAPI.createBase({
+          id: baseId,
+          name: newAvatarBaseName
+        });
+        
+        // Add the new base to the available bases
+        setAvailableBases(prevBases => [...prevBases, response.data]);
+        
+        // If this is a new avatar, select the new base
+        if (newAvatarData.base === '') {
+          setNewAvatarData(prev => ({
+            ...prev,
+            base: newAvatarBaseName
+          }));
         }
+        
+        // Reset input fields
+        setNewAvatarBaseInput('');
+        setNewAvatarBaseId('');
+        setShowNewAvatarBaseInput(false);
       } catch (error) {
-        console.error('Error loading custom bases from localStorage:', error);
+        console.error('Error creating avatar base:', error);
+        setError('Failed to create avatar base');
       }
-      
-      // Add the new base to the custom bases
-      const updatedCustomBases = [...customBases, newBase];
-      
-      // Save to localStorage for persistence
-      try {
-        localStorage.setItem('customAvatarBases', JSON.stringify(updatedCustomBases));
-      } catch (error) {
-        console.error('Error saving custom bases to localStorage:', error);
-      }
-      
-      // Update the available bases
-      setAvailableBases(prevBases => [...prevBases, newBase]);
-      
-      // If this is a new avatar, set the selected base to the new one
-      if (newAvatarData.base === '') {
-        setNewAvatarData(prev => ({
-          ...prev,
-          base: newAvatarBaseName
-        }));
-      }
-      
-      // Reset input fields
-      setNewAvatarBaseInput('');
-      setNewAvatarBaseId('');
-      setShowNewAvatarBaseInput(false);
     }
   };
 

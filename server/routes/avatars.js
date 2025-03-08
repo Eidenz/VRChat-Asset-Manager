@@ -256,4 +256,33 @@ router.get('/bases/all', async (req, res) => {
   }
 });
 
+/**
+ * @route   POST /api/avatars/bases
+ * @desc    Create a new avatar base
+ * @access  Public
+ */
+router.post('/bases',
+  [
+    body('name').notEmpty().withMessage('Base name is required'),
+    body('id').optional().isString().withMessage('Base ID must be a string')
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    
+    try {
+      const { name, id } = req.body;
+      const baseId = id || name.toLowerCase().replace(/\s+/g, '');
+      
+      const newBase = await avatarsModel.createAvatarBase({ id: baseId, name });
+      res.status(201).json({ success: true, data: newBase });
+    } catch (error) {
+      console.error('Error creating avatar base:', error);
+      res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+);
+
 module.exports = router;
