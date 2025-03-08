@@ -137,21 +137,40 @@ const Avatars = () => {
   });
   const [availableBases, setAvailableBases] = useState([]);
   const [loadingBases, setLoadingBases] = useState(false);
+  const [showNewAvatarBaseInput, setShowNewAvatarBaseInput] = useState(false);
+  const [newAvatarBaseName, setNewAvatarBaseInput] = useState('');
+  const [newAvatarBaseId, setNewAvatarBaseId] = useState('');
 
   // Fetch avatar bases
   useEffect(() => {
     const fetchAvatarBases = async () => {
       setLoadingBases(true);
       try {
+        // First get bases from API
         const response = await avatarsAPI.getBases();
-        setAvailableBases(response.data);
+        const apiBases = response.data || [];
+        
+        // Then try to get custom bases from localStorage
+        let customBases = [];
+        try {
+          const savedCustomBases = localStorage.getItem('customAvatarBases');
+          if (savedCustomBases) {
+            customBases = JSON.parse(savedCustomBases);
+          }
+        } catch (localStorageError) {
+          console.error('Error loading custom bases from localStorage:', localStorageError);
+        }
+        
+        // Combine API bases with custom bases
+        setAvailableBases([...apiBases, ...customBases]);
       } catch (error) {
         console.error('Error fetching avatar bases:', error);
+        setAvailableBases([]);
       } finally {
         setLoadingBases(false);
       }
     };
-
+  
     fetchAvatarBases();
   }, [avatarsAPI]);
 
@@ -208,6 +227,56 @@ const Avatars = () => {
         return sorted.sort((a, b) => a.base.localeCompare(b.base));
       default:
         return sorted;
+    }
+  };
+
+  const handleAddNewAvatarBase = () => {
+    if (newAvatarBaseName) {
+      // Generate an ID if not provided
+      const baseId = newAvatarBaseId || newAvatarBaseName.toLowerCase().replace(/\s+/g, '');
+      
+      // Create the new avatar base
+      const newBase = {
+        id: baseId,
+        name: newAvatarBaseName
+      };
+      
+      // Get existing custom bases from localStorage
+      let customBases = [];
+      try {
+        const savedCustomBases = localStorage.getItem('customAvatarBases');
+        if (savedCustomBases) {
+          customBases = JSON.parse(savedCustomBases);
+        }
+      } catch (error) {
+        console.error('Error loading custom bases from localStorage:', error);
+      }
+      
+      // Add the new base to the custom bases
+      const updatedCustomBases = [...customBases, newBase];
+      
+      // Save to localStorage for persistence
+      try {
+        localStorage.setItem('customAvatarBases', JSON.stringify(updatedCustomBases));
+      } catch (error) {
+        console.error('Error saving custom bases to localStorage:', error);
+      }
+      
+      // Update the available bases
+      setAvailableBases(prevBases => [...prevBases, newBase]);
+      
+      // If this is a new avatar, set the selected base to the new one
+      if (newAvatarData.base === '') {
+        setNewAvatarData(prev => ({
+          ...prev,
+          base: newAvatarBaseName
+        }));
+      }
+      
+      // Reset input fields
+      setNewAvatarBaseInput('');
+      setNewAvatarBaseId('');
+      setShowNewAvatarBaseInput(false);
     }
   };
 
@@ -877,6 +946,25 @@ const Avatars = () => {
                     </MenuItem>
                   ))
                 )}
+                <Divider sx={{ my: 1 }} />
+                <MenuItem
+                  sx={{
+                    fontStyle: 'italic',
+                    color: 'primary.main',
+                    my: 1
+                  }}
+                  onClick={(e) => {
+                    // Prevent the default behavior of the MenuItem
+                    e.preventDefault();
+                    // Stop propagation to prevent the Select from selecting this item
+                    e.stopPropagation();
+                    // Show the dialog to add a new avatar base
+                    setShowNewAvatarBaseInput(true);
+                  }}
+                >
+                  <AddIcon fontSize="small" sx={{ mr: 1 }} />
+                  Add new avatar base
+                </MenuItem>
               </Select>
             </FormControl>
             
@@ -1062,6 +1150,34 @@ const Avatars = () => {
         <DialogActions>
           <Button onClick={handleDeleteDialogClose}>Cancel</Button>
           <Button color="error" onClick={handleDeleteAvatar}>Delete</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={showNewAvatarBaseInput} onClose={() => setShowNewAvatarBaseInput(false)}>
+        <DialogTitle>Add New Avatar Base</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Base Name"
+            fullWidth
+            value={newAvatarBaseName}
+            onChange={(e) => setNewAvatarBaseInput(e.target.value)}
+          />
+          <TextField
+            margin="dense"
+            label="Base ID (Optional)"
+            fullWidth
+            value={newAvatarBaseId}
+            onChange={(e) => setNewAvatarBaseId(e.target.value)}
+            helperText="Optional: Provide a unique ID for this base"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowNewAvatarBaseInput(false)}>Cancel</Button>
+          <Button onClick={handleAddNewAvatarBase} disabled={!newAvatarBaseName}>
+            Add
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
