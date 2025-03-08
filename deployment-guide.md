@@ -1,6 +1,6 @@
 # Deployment Guide for VRChat Asset Manager
 
-This guide will walk you through deploying the VRChat Asset Manager application using Docker and setting up the necessary configurations to make everything work properly, including fixing permission issues with uploads.
+This guide includes the latest fixes for cross-computer compatibility and improved UI behavior for adding tags and avatar bases.
 
 ## Prerequisites
 
@@ -26,28 +26,21 @@ chmod 777 database
 
 Replace or create the following files with the updated versions to fix any issues:
 
-### 1. Update the Dockerfile
+### 1. Update client/src/services/api.js
 
-Replace your existing `Dockerfile` with the updated version that properly handles permissions for the uploads and database directories.
+This file has been updated to work properly without requiring environment variables to be set manually.
 
-### 2. Update server.js
+### 2. Update client/src/services/upload.js
 
-Replace the existing `server/server.js` file with the updated version that ensures directories exist with proper permissions.
+Similarly, this file has been updated for better Docker compatibility.
 
-### 3. Update uploads.js
+### 3. Update client/src/components/features/AssetUploader.js
 
-Replace the existing `server/routes/uploads.js` file with the updated version that handles file uploads better.
+Fixed issues with the "Add new tag" and "Add new avatar base" buttons being selectable as actual values.
 
-### 4. Create docker-entrypoint.sh
+### 4. Update the Dockerfile
 
-Create a new file `docker-entrypoint.sh` in the root directory:
-
-```bash
-touch docker-entrypoint.sh
-chmod +x docker-entrypoint.sh
-```
-
-Copy the content from the entrypoint script into this file.
+Replace your existing `Dockerfile` with the updated version that properly handles permissions and environment variables.
 
 ### 5. Update docker-compose.yml
 
@@ -78,6 +71,14 @@ Once everything is running, you can access the application at:
 ```
 http://localhost:5000
 ```
+
+## Key Improvements in This Version
+
+1. **Cross-Computer Compatibility**: The application no longer requires modifying the client/.env file to work on different computers. The API URL is now automatically determined based on the environment.
+
+2. **UI Improvements**: The "Add new tag" and "Add new avatar base" buttons in the asset uploader are now fixed to prevent them from being selected as actual values, which previously could result in empty tags or bases.
+
+3. **Docker Configuration**: The Docker setup has been improved to ensure proper permissions and environment variables are set.
 
 ## Troubleshooting
 

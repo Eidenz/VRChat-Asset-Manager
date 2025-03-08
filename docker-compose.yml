@@ -16,7 +16,12 @@ services:
       - NODE_ENV=production
       - PORT=5000
     restart: unless-stopped
-    user: "node"  # Use the node user instead of root
+    # Run as node user
+    user: "node"
+    
+    # The following lines ensure that uploads and database directories
+    # have the proper permissions for the node user
+    # We use the docker-entrypoint.sh script to set these permissions
     
   # Development services (for development only - comment out for production)
   # client:

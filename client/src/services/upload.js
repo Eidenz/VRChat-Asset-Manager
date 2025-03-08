@@ -1,9 +1,14 @@
-// client/src/services/upload.js
+// client/src/services/upload.js - Updated for better Docker compatibility
 import axios from 'axios';
 
-// Create axios instance with base URL
+// Create axios instance with base URL that works in both development and production
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || '/api',
+  // Use the same dynamic base URL determination as the main API service
+  baseURL: process.env.REACT_APP_API_URL || (
+    process.env.NODE_ENV === 'production' 
+      ? '/api' 
+      : 'http://localhost:5000/api'
+  ),
 });
 
 /**

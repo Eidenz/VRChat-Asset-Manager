@@ -18,8 +18,13 @@ RUN cd client && npm install
 # Copy server source
 COPY server/ ./server/
 
-# Copy client source and build
+# Copy client source and build with correct environment variables
 COPY client/ ./client/
+
+# Create a .env file with correct API URL for production
+RUN echo "REACT_APP_API_URL=/api" > ./client/.env
+
+# Build the client
 RUN cd client && npm run build
 
 # Set environment variables
@@ -32,8 +37,12 @@ VOLUME [ "/app/database", "/app/uploads" ]
 # Expose the port
 EXPOSE 5000
 
-# Set working directory to server for the startup command
-WORKDIR /app/server
+# Copy the entrypoint script
+COPY docker-entrypoint.sh /app/
+RUN chmod +x /app/docker-entrypoint.sh
 
-# Command to run the application
-CMD ["npm", "start"]
+# Set working directory for the entrypoint command
+WORKDIR /app
+
+# Command to run the application using the entrypoint script
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

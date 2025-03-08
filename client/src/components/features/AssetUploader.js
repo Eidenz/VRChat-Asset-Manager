@@ -1,4 +1,4 @@
-// src/components/features/AssetUploader.js - Updated with custom avatar bases support
+// src/components/features/AssetUploader.js - Complete component with fixes
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
@@ -622,43 +622,56 @@ const AssetUploader = ({ onClose }) => {
                   </Grid>
                   
                   <Grid item xs={12}>
-                  <FormControl fullWidth>
-                    <InputLabel>Tags</InputLabel>
-                    <Select
-                      multiple
-                      name="tags"
-                      value={assetData.tags}
-                      onChange={handleTagsChange}
-                      input={<OutlinedInput label="Tags" />}
-                      renderValue={(selected) => (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {selected.map((value) => (
-                            <Chip key={value} label={value} />
-                          ))}
-                        </Box>
-                      )}
-                      MenuProps={MenuProps}
-                    >
-                      {assetTags.map((tag) => (
-                        <MenuItem key={typeof tag === 'object' ? tag.id : tag} value={typeof tag === 'object' ? tag.name : tag}>
-                          <Checkbox checked={assetData.tags.indexOf(typeof tag === 'object' ? tag.name : tag) > -1} />
-                          {typeof tag === 'object' ? tag.name : tag}
-                        </MenuItem>
-                      ))}
-                      <Divider sx={{ my: 1 }} />
-                      <MenuItem 
-                        sx={{ fontStyle: 'italic', color: 'primary.main' }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setShowNewTagInput(true);
-                        }}
+                    <FormControl fullWidth>
+                      <InputLabel>Tags</InputLabel>
+                      <Select
+                        multiple
+                        name="tags"
+                        value={assetData.tags}
+                        onChange={handleTagsChange}
+                        input={<OutlinedInput label="Tags" />}
+                        renderValue={(selected) => (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {selected.map((value) => (
+                              <Chip key={value} label={value} />
+                            ))}
+                          </Box>
+                        )}
+                        MenuProps={MenuProps}
                       >
-                        <AddIcon fontSize="small" sx={{ mr: 1 }} />
-                        Add new tag
-                      </MenuItem>
-                    </Select>
-                  </FormControl>
+                        {assetTags.map((tag) => (
+                          <MenuItem key={typeof tag === 'object' ? tag.id : tag} value={typeof tag === 'object' ? tag.name : tag}>
+                            <Checkbox checked={assetData.tags.indexOf(typeof tag === 'object' ? tag.name : tag) > -1} />
+                            {typeof tag === 'object' ? tag.name : tag}
+                          </MenuItem>
+                        ))}
+                        
+                        {/* Add a divider before the "Add new tag" option */}
+                        <Divider sx={{ my: 1 }} />
+                        
+                        {/* Replace the MenuItem with a non-selectable button */}
+                        <Box 
+                          sx={{ 
+                            px: 2, 
+                            py: 1, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            color: 'primary.main',
+                            cursor: 'pointer',
+                            '&:hover': { bgcolor: 'action.hover' }
+                          }}
+                          onClick={(e) => {
+                            // Stop propagation to prevent the menu from closing
+                            e.stopPropagation();
+                            // Show the dialog to add a new tag
+                            setShowNewTagInput(true);
+                          }}
+                        >
+                          <AddIcon fontSize="small" sx={{ mr: 1 }} />
+                          <Typography>Add new tag</Typography>
+                        </Box>
+                      </Select>
+                    </FormControl>
                   </Grid>
                   
                   <Grid item xs={12}>
@@ -707,49 +720,34 @@ const AssetUploader = ({ onClose }) => {
                         <ListItemText primary={base.name} />
                       </MenuItem>
                     ))}
+                    
+                    {/* Add a divider before the "Add new avatar base" option */}
                     <Divider sx={{ my: 1 }} />
-                    <MenuItem
-                      sx={{ fontStyle: 'italic', color: 'primary.main' }}
+                    
+                    {/* Replace the MenuItem with a non-selectable button */}
+                    <Box 
+                      sx={{ 
+                        px: 2, 
+                        py: 1, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        color: 'primary.main',
+                        cursor: 'pointer',
+                        '&:hover': { bgcolor: 'action.hover' }
+                      }}
                       onClick={(e) => {
-                        e.preventDefault();
+                        // Stop propagation to prevent the menu from closing
                         e.stopPropagation();
+                        // Show the dialog to add a new avatar base
                         setShowNewAvatarBaseInput(true);
                       }}
                     >
                       <AddIcon fontSize="small" sx={{ mr: 1 }} />
-                      Add new avatar base
-                    </MenuItem>
+                      <Typography>Add new avatar base</Typography>
+                    </Box>
                   </Select>
                 </FormControl>
 
-                <Dialog open={showNewAvatarBaseInput} onClose={() => setShowNewAvatarBaseInput(false)}>
-                  <DialogTitle>Add New Avatar Base</DialogTitle>
-                  <DialogContent>
-                    <TextField
-                      autoFocus
-                      margin="dense"
-                      label="Base Name"
-                      fullWidth
-                      value={newAvatarBaseName}
-                      onChange={(e) => setNewAvatarBaseInput(e.target.value)}
-                    />
-                    <TextField
-                      margin="dense"
-                      label="Base ID"
-                      fullWidth
-                      value={newAvatarBaseId}
-                      onChange={(e) => setNewAvatarBaseId(e.target.value)}
-                      helperText="Optional: Provide a unique ID for this base"
-                    />
-                  </DialogContent>
-                  <DialogActions>
-                    <Button onClick={() => setShowNewAvatarBaseInput(false)}>Cancel</Button>
-                    <Button onClick={handleAddNewAvatarBase} disabled={!newAvatarBaseName}>
-                      Add
-                    </Button>
-                  </DialogActions>
-                </Dialog>
-                
                 <Alert severity="info" sx={{ mb: 3 }}>
                   Being specific about compatibility helps you find suitable assets for your avatars later.
                 </Alert>
@@ -936,6 +934,7 @@ const AssetUploader = ({ onClose }) => {
         )}
       </DialogActions>
 
+      {/* Dialog for adding a new tag */}
       <Dialog open={showNewTagInput} onClose={() => setShowNewTagInput(false)}>
         <DialogTitle>Add New Tag</DialogTitle>
         <DialogContent>
@@ -959,6 +958,35 @@ const AssetUploader = ({ onClose }) => {
             onClick={handleAddNewTag}
             disabled={!newTagValue || assetData.tags.includes(newTagValue)}
           >
+            Add
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog for adding a new avatar base */}
+      <Dialog open={showNewAvatarBaseInput} onClose={() => setShowNewAvatarBaseInput(false)}>
+        <DialogTitle>Add New Avatar Base</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Base Name"
+            fullWidth
+            value={newAvatarBaseName}
+            onChange={(e) => setNewAvatarBaseInput(e.target.value)}
+          />
+          <TextField
+            margin="dense"
+            label="Base ID"
+            fullWidth
+            value={newAvatarBaseId}
+            onChange={(e) => setNewAvatarBaseId(e.target.value)}
+            helperText="Optional: Provide a unique ID for this base"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowNewAvatarBaseInput(false)}>Cancel</Button>
+          <Button onClick={handleAddNewAvatarBase} disabled={!newAvatarBaseName}>
             Add
           </Button>
         </DialogActions>
