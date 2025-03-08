@@ -1,4 +1,4 @@
-// src/components/features/AssetUploader.js - Complete component with fixes
+// src/components/features/AssetUploader.js - Updated with fixed clickable "Add new" options
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
@@ -51,6 +51,10 @@ const MenuProps = {
     },
   },
 };
+
+// Special values for our "add new" options that we'll filter out
+const ADD_NEW_TAG_VALUE = '__add_new_tag__';
+const ADD_NEW_AVATAR_BASE_VALUE = '__add_new_avatar_base__';
 
 const FALLBACK_ASSET_TYPES = [
   { id: 'clothing', name: 'Clothing' },
@@ -280,9 +284,16 @@ const AssetUploader = ({ onClose }) => {
     const {
       target: { value },
     } = event;
+    
+    // Convert to array if it's a string
+    let selectedValues = typeof value === 'string' ? value.split(',') : value;
+    
+    // Filter out our special "add new" value
+    selectedValues = selectedValues.filter(v => v !== ADD_NEW_TAG_VALUE);
+    
     setAssetData({
       ...assetData,
-      tags: typeof value === 'string' ? value.split(',') : value,
+      tags: selectedValues,
     });
   };
 
@@ -290,9 +301,16 @@ const AssetUploader = ({ onClose }) => {
     const {
       target: { value },
     } = event;
+    
+    // Convert to array if it's a string
+    let selectedValues = typeof value === 'string' ? value.split(',') : value;
+    
+    // Filter out our special "add new" value
+    selectedValues = selectedValues.filter(v => v !== ADD_NEW_AVATAR_BASE_VALUE);
+    
     setAssetData({
       ...assetData,
-      compatibleWith: typeof value === 'string' ? value.split(',') : value,
+      compatibleWith: selectedValues,
     });
   };
 
@@ -538,7 +556,7 @@ const AssetUploader = ({ onClose }) => {
                         Drag & drop an image here, or click to select
                       </Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        Recommended size: 280x200 pixels, max size: 5MB
+                        Recommended size: 280x200 pixels, max size: 40MB
                       </Typography>
                       {uploadingImage && (
                         <Box sx={{ mt: 2 }}>
@@ -642,34 +660,34 @@ const AssetUploader = ({ onClose }) => {
                         {assetTags.map((tag) => (
                           <MenuItem key={typeof tag === 'object' ? tag.id : tag} value={typeof tag === 'object' ? tag.name : tag}>
                             <Checkbox checked={assetData.tags.indexOf(typeof tag === 'object' ? tag.name : tag) > -1} />
-                            {typeof tag === 'object' ? tag.name : tag}
+                            <ListItemText primary={typeof tag === 'object' ? tag.name : tag} />
                           </MenuItem>
                         ))}
                         
                         {/* Add a divider before the "Add new tag" option */}
                         <Divider sx={{ my: 1 }} />
                         
-                        {/* Replace the MenuItem with a non-selectable button */}
-                        <Box 
-                          sx={{ 
-                            px: 2, 
-                            py: 1, 
-                            display: 'flex', 
-                            alignItems: 'center', 
+                        {/* Use MenuItem for "Add new tag" but with special handling */}
+                        <MenuItem
+                          sx={{
+                            fontStyle: 'italic',
                             color: 'primary.main',
-                            cursor: 'pointer',
-                            '&:hover': { bgcolor: 'action.hover' }
+                            my: 1
                           }}
                           onClick={(e) => {
-                            // Stop propagation to prevent the menu from closing
+                            // Prevent the default behavior of the MenuItem
+                            e.preventDefault();
+                            // Stop propagation to prevent the Select from selecting this item
                             e.stopPropagation();
                             // Show the dialog to add a new tag
                             setShowNewTagInput(true);
                           }}
+                          // This is the key part - we need to set a special value that we filter out
+                          value={ADD_NEW_TAG_VALUE}
                         >
                           <AddIcon fontSize="small" sx={{ mr: 1 }} />
-                          <Typography>Add new tag</Typography>
-                        </Box>
+                          Add new tag
+                        </MenuItem>
                       </Select>
                     </FormControl>
                   </Grid>
@@ -724,27 +742,27 @@ const AssetUploader = ({ onClose }) => {
                     {/* Add a divider before the "Add new avatar base" option */}
                     <Divider sx={{ my: 1 }} />
                     
-                    {/* Replace the MenuItem with a non-selectable button */}
-                    <Box 
-                      sx={{ 
-                        px: 2, 
-                        py: 1, 
-                        display: 'flex', 
-                        alignItems: 'center', 
+                    {/* Use MenuItem for "Add new avatar base" but with special handling */}
+                    <MenuItem
+                      sx={{
+                        fontStyle: 'italic',
                         color: 'primary.main',
-                        cursor: 'pointer',
-                        '&:hover': { bgcolor: 'action.hover' }
+                        my: 1
                       }}
                       onClick={(e) => {
-                        // Stop propagation to prevent the menu from closing
+                        // Prevent the default behavior of the MenuItem
+                        e.preventDefault();
+                        // Stop propagation to prevent the Select from selecting this item
                         e.stopPropagation();
                         // Show the dialog to add a new avatar base
                         setShowNewAvatarBaseInput(true);
                       }}
+                      // This is the key part - we need to set a special value that we filter out
+                      value={ADD_NEW_AVATAR_BASE_VALUE}
                     >
                       <AddIcon fontSize="small" sx={{ mr: 1 }} />
-                      <Typography>Add new avatar base</Typography>
-                    </Box>
+                      Add new avatar base
+                    </MenuItem>
                   </Select>
                 </FormControl>
 

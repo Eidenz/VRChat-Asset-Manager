@@ -1,6 +1,3 @@
-# docker-compose.yml
-version: '3.8'
-
 services:
   app:
     build:
@@ -18,40 +15,3 @@ services:
     restart: unless-stopped
     # Run as node user
     user: "node"
-    
-    # The following lines ensure that uploads and database directories
-    # have the proper permissions for the node user
-    # We use the docker-entrypoint.sh script to set these permissions
-    
-  # Development services (for development only - comment out for production)
-  # client:
-  #   build:
-  #     context: ./client
-  #     dockerfile: Dockerfile.dev
-  #   container_name: vrchat-asset-manager-client
-  #   ports:
-  #     - "3000:3000"
-  #   volumes:
-  #     - ./client:/app
-  #     - /app/node_modules
-  #   environment:
-  #     - REACT_APP_API_URL=http://localhost:5000/api
-  #   depends_on:
-  #     - server
-  
-  # server:
-  #   build:
-  #     context: ./server
-  #     dockerfile: Dockerfile.dev
-  #   container_name: vrchat-asset-manager-server
-  #   ports:
-  #     - "5000:5000"
-  #   volumes:
-  #     - ./server:/app
-  #     - /app/node_modules
-  #     - ./database:/app/database
-  #     - ./uploads:/app/uploads
-  #   environment:
-  #     - NODE_ENV=development
-  #     - PORT=5000
-  #   command: npm run dev

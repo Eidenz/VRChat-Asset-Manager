@@ -187,7 +187,7 @@ const ImageUploader = ({ onImageUpload, initialImage = '' }) => {
             Drag & drop an image here, or click to select
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Recommended size: 160x180 pixels, max size: 5MB
+            Recommended size: 160x180 pixels, max size: 40MB
           </Typography>
           {uploading && (
             <Box sx={{ mt: 2 }}>
