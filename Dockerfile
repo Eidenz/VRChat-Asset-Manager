@@ -37,7 +37,7 @@ COPY docker-entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
 # Set working directory to server for the startup command
-WORKDIR /app
+WORKDIR /app/server
 
 # Command to run the application
 CMD ["/app/entrypoint.sh"]
