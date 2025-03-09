@@ -60,11 +60,6 @@ const Dashboard = () => {
     });
   };
 
-  // Get current avatar (first in list when sorted by lastUsed)
-  const currentAvatar = avatars.length > 0 
-    ? [...avatars].sort((a, b) => new Date(b.lastUsed) - new Date(a.lastUsed))[0]
-    : null;
-
   const isLoading = loading.avatars || loading.assets || loading.collections;
   const hasError = errors.avatars || errors.assets || errors.collections;
 
@@ -213,8 +208,8 @@ const Dashboard = () => {
                           <Box sx={{ mr: 1 }}>
                             <Chip 
                               size="small" 
-                              label={avatar.id === currentAvatar?.id ? "Current" : "Recent"} 
-                              color={avatar.id === currentAvatar?.id ? "primary" : "default"}
+                              label={avatar.isCurrent ? "Current" : "Recent"} 
+                              color={avatar.isCurrent ? "primary" : "default"}
                             />
                           </Box>
                         </Tooltip>
