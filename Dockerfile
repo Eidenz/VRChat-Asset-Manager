@@ -42,7 +42,7 @@ COPY docker-entrypoint.sh /app/
 RUN chmod +x /app/docker-entrypoint.sh
 
 # Set working directory for the entrypoint command
-WORKDIR /app
+WORKDIR /app/server
 
 # Command to run the application using the entrypoint script
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
