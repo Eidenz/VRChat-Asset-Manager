@@ -45,11 +45,24 @@ async function getAssetById(id) {
   const tags = await getAssetTags(id);
   const compatibleWith = await getAssetCompatibleAvatars(id);
   
+  // Parse the ownedVariant field if it's a JSON string
+  let ownedVariant = asset.owned_variant;
+  if (ownedVariant && typeof ownedVariant === 'string') {
+    try {
+      // Try to parse as JSON in case it's stored as an array
+      ownedVariant = JSON.parse(ownedVariant);
+    } catch (e) {
+      // If it's not valid JSON, keep as is
+      console.log('Note: owned_variant is not a JSON string:', ownedVariant);
+    }
+  }
+  
   return {
     ...asset,
     tags,
     compatibleWith,
-    favorited: asset.favorited === 1
+    favorited: asset.favorited === 1,
+    ownedVariant: ownedVariant
   };
 }
 
@@ -172,8 +185,9 @@ async function getAssetCompatibleAvatars(assetId) {
 async function createAsset(asset) {
   const { 
     name, creator, description, fileSize, filePath, 
-    downloadUrl, version, type, notes, tags = [], compatibleWith = [],
-    serverUploadedImage // Add this to the destructuring
+    downloadUrl, version, type, notes, tags = [], 
+    compatibleWith = [], ownedVariant, // Now this can be an array
+    serverUploadedImage
   } = asset;
   
   // Use serverUploadedImage if available, fallback to thumbnail
@@ -181,6 +195,17 @@ async function createAsset(asset) {
   
   console.log('Creating asset with thumbnail:', thumbnail);
   console.log('(serverUploadedImage was:', serverUploadedImage, ')');
+  
+  // Format owned variant for database storage
+  // If it's an array, stringify it; if not, store as is or null
+  let storedOwnedVariant = null;
+  if (ownedVariant) {
+    if (Array.isArray(ownedVariant)) {
+      storedOwnedVariant = JSON.stringify(ownedVariant);
+    } else {
+      storedOwnedVariant = ownedVariant;
+    }
+  }
   
   const dateAdded = new Date().toISOString();
   const lastUsed = dateAdded;
@@ -196,12 +221,14 @@ async function createAsset(asset) {
     const result = await db.run(`
       INSERT INTO assets (
         name, creator, description, thumbnail, date_added, last_used, 
-        file_size, file_path, download_url, version, type, favorited, notes
+        file_size, file_path, download_url, version, type, favorited, notes,
+        owned_variant
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       name, creator, description, thumbnail, dateAdded, lastUsed,
-      fileSize, filePath, downloadUrl, version, type, favorited, notes
+      fileSize, filePath, downloadUrl, version, type, favorited, notes,
+      storedOwnedVariant
     ]);
     
     const assetId = result.lastID;
@@ -228,6 +255,18 @@ async function createAsset(asset) {
     // Commit the transaction
     await db.run('COMMIT');
     
+    // Format the owned variant for the return value
+    let returnOwnedVariant = null;
+    if (storedOwnedVariant) {
+      try {
+        // Try to parse it as JSON
+        returnOwnedVariant = JSON.parse(storedOwnedVariant);
+      } catch (e) {
+        // If not valid JSON, return as is
+        returnOwnedVariant = storedOwnedVariant;
+      }
+    }
+    
     return {
       id: assetId,
       name,
@@ -244,7 +283,8 @@ async function createAsset(asset) {
       favorited: Boolean(favorited), // Return as boolean
       notes,
       tags,
-      compatibleWith
+      compatibleWith,
+      ownedVariant: returnOwnedVariant
     };
     
   } catch (err) {
@@ -263,7 +303,8 @@ async function createAsset(asset) {
 async function updateAsset(id, asset) {
   const { 
     name, creator, description, thumbnail, fileSize, filePath, 
-    downloadUrl, version, type, notes, tags, compatibleWith
+    downloadUrl, version, type, notes, tags, compatibleWith,
+    ownedVariant  // Add ownedVariant
   } = asset;
   
   // Ensure favorited is properly converted to 0/1 for database
@@ -286,7 +327,8 @@ async function updateAsset(id, asset) {
           version = ?,
           type = ?,
           notes = ?,
-          favorited = ?
+          favorited = ?,
+          owned_variant = ?  /* Add owned_variant to SET clause */
       WHERE id = ?
     `, [
       name, 
@@ -299,7 +341,8 @@ async function updateAsset(id, asset) {
       version, 
       type, 
       notes, 
-      favorited, 
+      favorited,
+      ownedVariant || null,
       id
     ]);
     

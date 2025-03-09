@@ -35,6 +35,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LinkIcon from '@mui/icons-material/Link';
 import { styled } from '@mui/material/styles';
 import DeleteIcon from '@mui/icons-material/Delete';
+import VerifiedIcon from '@mui/icons-material/Verified';
 
 // Import API context
 import { useApi } from '../../context/ApiContext';
@@ -402,26 +403,67 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
           <Divider />
           
           <Box sx={{ p: 2 }}>
-            {tabValue === 0 && (
-              <Box>
-                <Typography variant="h3" sx={{ mb: 2 }}>Compatibility Information</Typography>
-                
-                <Typography variant="body1" sx={{ mb: 2 }}>
-                  This asset is compatible with the following avatar bases:
-                </Typography>
-                
-                <List sx={{ bgcolor: 'background.default', borderRadius: 2, mb: 3 }}>
-                  {localAsset.compatibleWith && localAsset.compatibleWith.map((base, index) => (
-                    <ListItem key={index}>
+          {tabValue === 0 && (
+            <Box>
+              <Typography variant="h3" sx={{ mb: 2 }}>Compatibility Information</Typography>
+              
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                This asset is compatible with the following avatar bases:
+              </Typography>
+              
+              <List sx={{ bgcolor: 'background.default', borderRadius: 2, mb: 3 }}>
+                {localAsset.compatibleWith && localAsset.compatibleWith.map((base, index) => {
+                  // Check if this base is in the owned variants
+                  const isOwned = localAsset.ownedVariant && (
+                    Array.isArray(localAsset.ownedVariant) 
+                      ? localAsset.ownedVariant.includes(base)
+                      : localAsset.ownedVariant === base
+                  );
+                  
+                  return (
+                    <ListItem key={index} sx={{
+                      position: 'relative',
+                      bgcolor: 'transparent',
+                      borderRadius: 1,
+                      mb: 0.5
+                    }}>
                       <ListItemIcon>
-                        <CheckCircleIcon color="success" />
+                        {isOwned ? (
+                          <VerifiedIcon color="success" />
+                        ) : (
+                          <CheckCircleIcon color="disabled" />
+                        )}
                       </ListItemIcon>
-                      <ListItemText primary={base} />
+                      <ListItemText 
+                        primary={base} 
+                        secondary={isOwned ? "You own this variant" : "Compatible but not owned"}
+                      />
+                      {isOwned && (
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            right: 16,
+                            bgcolor: 'success.main',
+                            color: 'white',
+                            px: 1,
+                            py: 0.5,
+                            borderRadius: 1,
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <VerifiedIcon fontSize="small" sx={{ mr: 0.5 }} />
+                          Owned
+                        </Box>
+                      )}
                     </ListItem>
-                  ))}
-                </List>
-              </Box>
-            )}
+                  );
+                })}
+              </List>
+            </Box>
+          )}
             
             {tabValue === 1 && (
               <Box>

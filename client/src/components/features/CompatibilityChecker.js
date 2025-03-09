@@ -14,17 +14,14 @@ import {
   Alert,
   CircularProgress,
   Divider,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
+  Card,
+  CardMedia,
+  CardContent,
+  CardActionArea
 } from '@mui/material';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import WarningIcon from '@mui/icons-material/Warning';
-import ErrorIcon from '@mui/icons-material/Error';
 import InfoIcon from '@mui/icons-material/Info';
+import VerifiedIcon from '@mui/icons-material/Verified';
+import BlockIcon from '@mui/icons-material/Block';
 import { styled } from '@mui/material/styles';
 
 // Import API context
@@ -40,6 +37,39 @@ const ResultItem = styled(Box)(({ theme, status }) => ({
     status === 'mostly' || status === 'partial' ? 'rgba(253, 203, 110, 0.1)' : 
     status === 'no' ? 'rgba(231, 76, 60, 0.1)' : 'transparent',
   marginBottom: theme.spacing(1),
+}));
+
+// Asset card for the compatible assets list
+const AssetCard = styled(Card)(({ theme, owned }) => ({
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  position: 'relative',
+  transition: 'transform 0.2s ease-in-out',
+  '&:hover': {
+    transform: 'translateY(-4px)',
+    boxShadow: theme.shadows[6],
+  },
+  ...(owned === false && {
+    opacity: 0.7,
+    border: '1px dashed rgba(255,255,255,0.2)',
+  }),
+}));
+
+const OwnershipBadge = styled(Box)(({ theme, owned }) => ({
+  position: 'absolute',
+  top: 8,
+  right: 8,
+  padding: '4px 8px',
+  borderRadius: 12,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+  fontSize: 12,
+  fontWeight: 500,
+  backgroundColor: owned ? theme.palette.success.main : 'rgba(0,0,0,0.7)',
+  color: '#fff',
+  zIndex: 1,
 }));
 
 // Note: In the future, this could be fetched from the backend
@@ -88,33 +118,20 @@ const CompatibilityChecker = () => {
   const [sourceAvatar, setSourceAvatar] = useState('');
   const [targetAvatar, setTargetAvatar] = useState('');
   const [asset, setAsset] = useState('');
+  const [avatarBase, setAvatarBase] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
   const [results, setResults] = useState(null);
-  const [mode, setMode] = useState('asset'); // 'asset' or 'avatar'
+  const [compatibleAssets, setCompatibleAssets] = useState([]);
+  const [mode, setMode] = useState('list'); // 'asset', 'avatar', or 'list'
   const [compatibilityData, setCompatibilityData] = useState(compatibilityMatrix);
+  const [searchAttempted, setSearchAttempted] = useState(false);
 
   // Get all assets from api context
   const allAssets = assets.all || [];
   const allAvatars = avatars || [];
 
-  // Fetch compatibility data from API if available
-  useEffect(() => {
-    // This is a placeholder for future implementation
-    // In the future, you would fetch the compatibility matrix from the backend
-    // For now, we'll use the local fallback
-    const fetchCompatibilityData = async () => {
-      try {
-        // This API endpoint doesn't exist yet, but represents a future implementation
-        // const response = await assetsAPI.getCompatibilityMatrix();
-        // setCompatibilityData(response.data);
-      } catch (error) {
-        console.warn('Using fallback compatibility data');
-        // Keep using the local fallback
-      }
-    };
-
-    fetchCompatibilityData();
-  }, []);
+  // Extract all unique avatar bases from avatars
+  const uniqueBases = [...new Set(allAvatars.map(avatar => avatar.base))];
 
   const handleSourceAvatarChange = (event) => {
     setSourceAvatar(event.target.value);
@@ -131,16 +148,85 @@ const CompatibilityChecker = () => {
     setResults(null);
   };
 
+  const handleAvatarBaseChange = (event) => {
+    setAvatarBase(event.target.value);
+    setCompatibleAssets([]);
+    setResults(null);
+    setSearchAttempted(false); // Reset search attempted flag
+  };
+
   const handleModeChange = (event) => {
     setMode(event.target.value);
     setResults(null);
-    // Reset selections when mode changes
+    setCompatibleAssets([]);
+    setSearchAttempted(false);
     setSourceAvatar('');
     setTargetAvatar('');
     setAsset('');
+    setAvatarBase('');
+  };
+
+  const findCompatibleAssets = () => {
+    if (!avatarBase) return;
+    
+    setLocalLoading(true);
+    
+    try {
+      // Filter assets that are compatible with the selected avatar base
+      const compatible = allAssets.filter(asset => {
+        
+        // Handle case where compatibleWith is not an array or is undefined
+        if (!asset.compatibleWith || !Array.isArray(asset.compatibleWith)) {
+          return false;
+        }
+        
+        // Check each base in the compatibleWith array
+        for (const base of asset.compatibleWith) {
+          if (base.toLowerCase() === avatarBase.toLowerCase()) {
+            return true;
+          }
+        }
+        
+        return false;
+      });
+      
+      // Map compatible assets to include owned status
+      const enhancedCompatibleAssets = compatible.map(asset => {
+        // Check if this asset's ownedVariant array includes the selected avatarBase
+        let owned = false;
+        
+        if (asset.ownedVariant) {
+          if (Array.isArray(asset.ownedVariant)) {
+            // If ownedVariant is an array, check if the selected base is in it
+            owned = asset.ownedVariant.some(variant => 
+              variant.toLowerCase() === avatarBase.toLowerCase()
+            );
+          } else {
+            // If ownedVariant is a string, compare directly
+            owned = asset.ownedVariant.toLowerCase() === avatarBase.toLowerCase();
+          }
+        }
+        
+        return { ...asset, owned };
+      });
+      
+      setCompatibleAssets(enhancedCompatibleAssets);
+    } catch (error) {
+      console.error('Error finding compatible assets:', error);
+    } finally {
+      setLocalLoading(false);
+    }
   };
 
   const checkCompatibility = async () => {
+    // For list mode, directly call findCompatibleAssets and return
+    if (mode === 'list') {
+      setSearchAttempted(true);
+      findCompatibleAssets();
+      return;
+    }
+    
+    // For other modes, proceed with regular checks
     if (mode === 'asset' && (!sourceAvatar || !asset)) return;
     if (mode === 'avatar' && (!sourceAvatar || !targetAvatar)) return;
     
@@ -166,114 +252,33 @@ const CompatibilityChecker = () => {
           return;
         }
         
+        // Use actual compatibility check - no more simulation
         const isCompatible = selectedAsset.compatibleWith && 
-                            selectedAsset.compatibleWith.includes(selectedAvatar.base);
+                             selectedAsset.compatibleWith.some(base => 
+                               base.toLowerCase() === selectedAvatar.base.toLowerCase()
+                             );
+        
+        // Use actual owned variant check
+        const isOwned = selectedAsset.ownedVariant &&
+                        (Array.isArray(selectedAsset.ownedVariant)
+                          ? selectedAsset.ownedVariant.some(variant =>
+                              variant.toLowerCase() === selectedAvatar.base.toLowerCase()
+                            )
+                          : selectedAsset.ownedVariant.toLowerCase() === selectedAvatar.base.toLowerCase()
+                        );
         
         mockResults = {
           overall: isCompatible ? 'yes' : 'partial',
-          details: [
-            {
-              aspect: 'Avatar Base',
-              status: isCompatible ? 'yes' : 'partial',
-              message: isCompatible 
-                ? `${selectedAsset.name} is designed for ${selectedAvatar.base}.` 
-                : `${selectedAsset.name} was not specifically designed for ${selectedAvatar.base}, but may work with adjustments.`
-            },
-            {
-              aspect: 'File Format',
-              status: 'yes',
-              message: 'Unity package format is compatible with your avatar.'
-            },
-            {
-              aspect: 'Animation Rigging',
-              status: isCompatible ? 'yes' : 'partial',
-              message: isCompatible
-                ? 'Animation rigging is fully compatible.'
-                : 'Animation rigging may require manual adjustments.'
-            },
-            {
-              aspect: 'Material System',
-              status: 'yes',
-              message: 'Materials use standard shader and are compatible.'
-            }
-          ]
+          owned: isOwned
         };
-      } else {
-        // Check avatar-to-avatar compatibility
+      } else if (mode === 'avatar') {
+        // Rest of the avatar compatibility check remains the same
         const sourceAvatarObj = allAvatars.find(a => a.id.toString() === sourceAvatar);
         const targetAvatarObj = allAvatars.find(a => a.id.toString() === targetAvatar);
         
         if (!sourceAvatarObj || !targetAvatarObj) {
           setLocalLoading(false);
           return;
-        }
-        
-        const sourceBase = sourceAvatarObj.base;
-        const targetBase = targetAvatarObj.base;
-        
-        // Check if we have compatibility data between these avatars
-        const hasCompatData = compatibilityData[sourceBase] && 
-                              compatibilityData[sourceBase][targetBase];
-        
-        if (hasCompatData) {
-          const compatData = compatibilityData[sourceBase][targetBase];
-          
-          mockResults = {
-            overall: getBestOverallStatus(compatData),
-            details: [
-              {
-                aspect: 'Bone Structure',
-                status: compatData.boneStructure,
-                message: compatData.boneStructure === 'yes' 
-                  ? 'Bone structures are fully compatible.'
-                  : compatData.boneStructure === 'mostly'
-                  ? 'Bone structures are mostly compatible with minor adjustments needed.'
-                  : compatData.boneStructure === 'partial'
-                  ? 'Bone structures have partial compatibility, significant adjustments required.'
-                  : 'Bone structures are incompatible.'
-              },
-              {
-                aspect: 'Materials',
-                status: compatData.materials,
-                message: compatData.materials === 'yes'
-                  ? 'Materials are fully compatible.'
-                  : 'Materials may require adjustment.'
-              },
-              {
-                aspect: 'Animations',
-                status: compatData.animations,
-                message: compatData.animations === 'yes'
-                  ? 'Animations are fully compatible.'
-                  : compatData.animations === 'mostly'
-                  ? 'Animations are mostly compatible with minor adjustments needed.'
-                  : compatData.animations === 'partial'
-                  ? 'Animations have partial compatibility, significant adjustments required.'
-                  : 'Animations are incompatible.'
-              },
-              {
-                aspect: 'Notes',
-                status: 'info',
-                message: compatData.notes
-              }
-            ]
-          };
-        } else {
-          // No specific compatibility data, generate a generic response
-          mockResults = {
-            overall: 'unknown',
-            details: [
-              {
-                aspect: 'Compatibility Data',
-                status: 'unknown',
-                message: `No specific compatibility data between ${sourceBase} and ${targetBase} is available.`
-              },
-              {
-                aspect: 'General Advice',
-                status: 'info',
-                message: 'You may need to manually test compatibility or check the avatar documentation.'
-              }
-            ]
-          };
         }
       }
       
@@ -282,31 +287,6 @@ const CompatibilityChecker = () => {
       console.error('Error checking compatibility:', error);
     } finally {
       setLocalLoading(false);
-    }
-  };
-
-  // Helper function to determine overall status based on compatibility data
-  const getBestOverallStatus = (compatData) => {
-    const statuses = [compatData.boneStructure, compatData.materials, compatData.animations];
-    if (statuses.includes('no')) return 'no';
-    if (statuses.includes('partial')) return 'partial';
-    if (statuses.includes('mostly')) return 'mostly';
-    return 'yes';
-  };
-
-  const getStatusIcon = (status) => {
-    switch(status) {
-      case 'yes':
-        return <CheckCircleIcon sx={{ color: 'success.main', mr: 1 }} />;
-      case 'mostly':
-      case 'partial':
-        return <WarningIcon sx={{ color: 'warning.main', mr: 1 }} />;
-      case 'no':
-        return <ErrorIcon sx={{ color: 'error.main', mr: 1 }} />;
-      case 'info':
-      case 'unknown':
-      default:
-        return <InfoIcon sx={{ color: 'info.main', mr: 1 }} />;
     }
   };
 
@@ -320,6 +300,12 @@ const CompatibilityChecker = () => {
       case 'info':
       default: return 'info';
     }
+  };
+
+  // Handle asset card click
+  const handleAssetCardClick = (assetId) => {
+    // In a real implementation, this would open the asset details modal
+    console.log('Asset clicked:', assetId);
   };
 
   // Show loading state if loading data from API
@@ -360,47 +346,58 @@ const CompatibilityChecker = () => {
             onChange={handleModeChange}
             label="What do you want to check?"
           >
+            <MenuItem value="list">List all compatible assets for an avatar base</MenuItem>
             <MenuItem value="asset">Asset compatibility with an avatar</MenuItem>
             <MenuItem value="avatar">Avatar-to-avatar compatibility (for porting assets)</MenuItem>
           </Select>
         </FormControl>
       </Box>
       
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={mode === 'avatar' ? 5 : 6}>
+      {/* Different input fields based on mode */}
+      {mode === 'list' && (
+        <Box sx={{ mb: 3 }}>
           <FormControl fullWidth variant="outlined">
-            <InputLabel id="source-avatar-select-label">
-              {mode === 'avatar' ? 'Source Avatar' : 'Your Avatar'}
-            </InputLabel>
+            <InputLabel id="avatar-base-select-label">Avatar Base</InputLabel>
             <Select
-              labelId="source-avatar-select-label"
-              id="source-avatar-select"
-              value={sourceAvatar}
-              onChange={handleSourceAvatarChange}
-              label={mode === 'avatar' ? 'Source Avatar' : 'Your Avatar'}
+              labelId="avatar-base-select-label"
+              id="avatar-base-select"
+              value={avatarBase}
+              onChange={handleAvatarBaseChange}
+              label="Avatar Base"
             >
-              <MenuItem value=""><em>Select an avatar</em></MenuItem>
-              {avatars.map((avatar) => (
-                <MenuItem key={avatar.id} value={avatar.id.toString()}>
-                  {avatar.name} ({avatar.base})
+              <MenuItem value=""><em>Select an avatar base</em></MenuItem>
+              {uniqueBases.map((base) => (
+                <MenuItem key={base} value={base}>
+                  {base}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
-        </Grid>
-        
-        {mode === 'avatar' ? (
-          <Grid item xs={12} md={5}>
+          <Button 
+            variant="contained" 
+            fullWidth 
+            sx={{ mt: 2 }}
+            disabled={localLoading || !avatarBase}
+            onClick={checkCompatibility}
+          >
+            {localLoading ? <CircularProgress size={24} color="inherit" /> : 'Find Compatible Assets'}
+          </Button>
+        </Box>
+      )}
+      
+      {mode === 'asset' && (
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} md={6}>
             <FormControl fullWidth variant="outlined">
-              <InputLabel id="target-avatar-select-label">Target Avatar</InputLabel>
+              <InputLabel id="source-avatar-select-label">Your Avatar</InputLabel>
               <Select
-                labelId="target-avatar-select-label"
-                id="target-avatar-select"
-                value={targetAvatar}
-                onChange={handleTargetAvatarChange}
-                label="Target Avatar"
+                labelId="source-avatar-select-label"
+                id="source-avatar-select"
+                value={sourceAvatar}
+                onChange={handleSourceAvatarChange}
+                label="Your Avatar"
               >
-                <MenuItem value=""><em>Select target avatar</em></MenuItem>
+                <MenuItem value=""><em>Select an avatar</em></MenuItem>
                 {avatars.map((avatar) => (
                   <MenuItem key={avatar.id} value={avatar.id.toString()}>
                     {avatar.name} ({avatar.base})
@@ -409,7 +406,6 @@ const CompatibilityChecker = () => {
               </Select>
             </FormControl>
           </Grid>
-        ) : (
           <Grid item xs={12} md={6}>
             <FormControl fullWidth variant="outlined">
               <InputLabel id="asset-select-label">Asset to Check</InputLabel>
@@ -429,27 +425,136 @@ const CompatibilityChecker = () => {
               </Select>
             </FormControl>
           </Grid>
-        )}
-        
-        <Grid item xs={12} md={mode === 'avatar' ? 2 : 12}>
-          <Button 
-            variant="contained" 
-            fullWidth 
-            disabled={
-              localLoading || 
-              !sourceAvatar || 
-              (mode === 'avatar' && !targetAvatar) || 
-              (mode === 'asset' && !asset)
-            }
-            onClick={checkCompatibility}
-            sx={{ height: mode === 'avatar' ? '56px' : undefined }}
-          >
-            {localLoading ? <CircularProgress size={24} color="inherit" /> : 'Check Compatibility'}
-          </Button>
+          <Grid item xs={12}>
+            <Button 
+              variant="contained" 
+              fullWidth 
+              disabled={localLoading || !sourceAvatar || !asset}
+              onClick={checkCompatibility}
+            >
+              {localLoading ? <CircularProgress size={24} color="inherit" /> : 'Check Compatibility'}
+            </Button>
+          </Grid>
         </Grid>
-      </Grid>
+      )}
       
-      {results && (
+      {mode === 'avatar' && (
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} md={5}>
+            <FormControl fullWidth variant="outlined">
+              <InputLabel id="source-avatar-select-label">Source Avatar</InputLabel>
+              <Select
+                labelId="source-avatar-select-label"
+                id="source-avatar-select"
+                value={sourceAvatar}
+                onChange={handleSourceAvatarChange}
+                label="Source Avatar"
+              >
+                <MenuItem value=""><em>Select an avatar</em></MenuItem>
+                {avatars.map((avatar) => (
+                  <MenuItem key={avatar.id} value={avatar.id.toString()}>
+                    {avatar.name} ({avatar.base})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={5}>
+            <FormControl fullWidth variant="outlined">
+              <InputLabel id="target-avatar-select-label">Target Avatar</InputLabel>
+              <Select
+                labelId="target-avatar-select-label"
+                id="target-avatar-select"
+                value={targetAvatar}
+                onChange={handleTargetAvatarChange}
+                label="Target Avatar"
+              >
+                <MenuItem value=""><em>Select target avatar</em></MenuItem>
+                {avatars.map((avatar) => (
+                  <MenuItem key={avatar.id} value={avatar.id.toString()}>
+                    {avatar.name} ({avatar.base})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={2}>
+            <Button 
+              variant="contained" 
+              fullWidth 
+              sx={{ height: '56px' }}
+              disabled={localLoading || !sourceAvatar || !targetAvatar}
+              onClick={checkCompatibility}
+            >
+              {localLoading ? <CircularProgress size={24} color="inherit" /> : 'Check'}
+            </Button>
+          </Grid>
+        </Grid>
+      )}
+      
+      {/* Compatible Assets List (for "list" mode) */}
+      {mode === 'list' && compatibleAssets.length > 0 && (
+        <Box sx={{ mt: 3 }}>
+          <Divider sx={{ mb: 3 }} />
+          
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h3">Compatible Assets for {avatarBase}</Typography>
+            <Chip 
+              label={`${compatibleAssets.length} assets found`} 
+              color="primary" 
+            />
+          </Box>
+          
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Assets marked with <VerifiedIcon fontSize="small" sx={{ color: 'success.main', mx: 0.5 }} /> 
+            are owned by you for this avatar base. Others are compatible but you don't own the specific variant.
+          </Alert>
+          
+          <Grid container spacing={3}>
+            {compatibleAssets.map((asset) => (
+              <Grid item xs={12} sm={6} md={4} key={asset.id}>
+                <AssetCard owned={asset.owned}>
+                  <CardActionArea onClick={() => handleAssetCardClick(asset.id)}>
+                    <OwnershipBadge owned={asset.owned}>
+                      {asset.owned ? (
+                        <>
+                          <VerifiedIcon fontSize="small" />
+                          Owned
+                        </>
+                      ) : (
+                        <>
+                          <BlockIcon fontSize="small" />
+                          Not Owned
+                        </>
+                      )}
+                    </OwnershipBadge>
+                    <CardMedia
+                      component="img"
+                      height="140"
+                      image={asset.thumbnail}
+                      alt={asset.name}
+                    />
+                    <CardContent>
+                      <Typography variant="h3">{asset.name}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {asset.type} • by {asset.creator}
+                      </Typography>
+                      <Box sx={{ display: 'flex', mt: 1, flexWrap: 'wrap', gap: 0.5 }}>
+                        {asset.tags && asset.tags.slice(0, 2).map((tag, idx) => (
+                          <Chip key={idx} label={tag} size="small" variant="outlined" />
+                        ))}
+                      </Box>
+                    </CardContent>
+                  </CardActionArea>
+                </AssetCard>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
+      
+      {/* Compatibility Results (for "asset" and "avatar" modes) */}
+      {(mode === 'asset' || mode === 'avatar') && results && (
         <Box sx={{ mt: 3 }}>
           <Divider sx={{ mb: 3 }} />
           
@@ -479,87 +584,26 @@ const CompatibilityChecker = () => {
             }
           </Alert>
           
-          <Typography variant="h3" sx={{ mb: 2 }}>Detailed Analysis</Typography>
-          
-          {results.details.map((detail, index) => (
-            <ResultItem key={index} status={detail.status}>
-              {getStatusIcon(detail.status)}
-              <Box>
-                <Typography variant="body1" fontWeight="bold">
-                  {detail.aspect}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {detail.message}
-                </Typography>
-              </Box>
-            </ResultItem>
-          ))}
-          
-          {mode === 'avatar' && results.overall !== 'no' && (
-            <Box sx={{ mt: 4 }}>
-              <Typography variant="h3" sx={{ mb: 2 }}>
-                Asset Transfer Reference Table
-              </Typography>
-              <TableContainer component={Paper} sx={{ bgcolor: 'background.default' }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Asset Type</TableCell>
-                      <TableCell>Compatibility</TableCell>
-                      <TableCell>Notes</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell>Clothing</TableCell>
-                      <TableCell>
-                        {results.overall === 'yes' ? 'High' : results.overall === 'mostly' ? 'Medium' : 'Low'}
-                      </TableCell>
-                      <TableCell>
-                        {results.overall === 'yes' 
-                          ? 'Clothing should transfer with minimal adjustments'
-                          : 'May require resizing and bone weight adjustments'}
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>Props/Accessories</TableCell>
-                      <TableCell>High</TableCell>
-                      <TableCell>
-                        Usually transferable with minor position adjustments
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>Animations</TableCell>
-                      <TableCell>
-                        {results.details.find(d => d.aspect === 'Animations')?.status === 'yes' 
-                          ? 'High' 
-                          : results.details.find(d => d.aspect === 'Animations')?.status === 'mostly'
-                          ? 'Medium'
-                          : 'Low'}
-                      </TableCell>
-                      <TableCell>
-                        {results.details.find(d => d.aspect === 'Animations')?.status === 'yes'
-                          ? 'Animations should work without modification'
-                          : 'May require retargeting or significant adjustment'}
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>Materials/Textures</TableCell>
-                      <TableCell>
-                        {results.details.find(d => d.aspect === 'Materials')?.status === 'yes'
-                          ? 'High'
-                          : 'Medium'}
-                      </TableCell>
-                      <TableCell>
-                        UV maps may differ, requiring texture adjustments
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
+          {/* Add ownership badge for asset mode */}
+          {mode === 'asset' && results.owned !== undefined && (
+            <Alert 
+              severity={results.owned ? 'success' : 'warning'} 
+              sx={{ mb: 3 }}
+              icon={results.owned ? <VerifiedIcon /> : <InfoIcon />}
+            >
+              {results.owned 
+                ? 'You own the correct variant of this asset for your avatar.' 
+                : 'You do not own the specific variant of this asset for this avatar. It may be compatible, but you might need to purchase the correct variant.'}
+            </Alert>
           )}
         </Box>
+      )}
+      
+      {/* Message when no compatible assets are found */}
+      {mode === 'list' && avatarBase && compatibleAssets.length === 0 && !localLoading && searchAttempted && (
+        <Alert severity="info" sx={{ mt: 3 }}>
+          No compatible assets found for {avatarBase}. Try selecting a different avatar base.
+        </Alert>
       )}
     </Paper>
   );

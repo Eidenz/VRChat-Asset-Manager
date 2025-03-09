@@ -50,7 +50,7 @@ db.serialize(() => {
     thumbnail TEXT NOT NULL,
     date_added TEXT NOT NULL,
     last_used TEXT NOT NULL,
-    file_path TEXT NOT NULL,
+    file_path TEXT,
     notes TEXT,
     favorited INTEGER DEFAULT 0,
     is_current INTEGER DEFAULT 0
@@ -79,7 +79,8 @@ db.serialize(() => {
     version TEXT,
     type TEXT NOT NULL,
     favorited INTEGER DEFAULT 0,
-    notes TEXT
+    notes TEXT,
+    owned_variant TEXT
   )`);
   
   db.run(`CREATE TABLE asset_tags (

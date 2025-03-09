@@ -1,4 +1,4 @@
-// src/components/features/AssetUploader.js - Updated with fixed clickable "Add new" options
+// src/components/features/AssetUploader.js - Updated with owned variant tracking
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
@@ -9,6 +9,7 @@ import {
   StepLabel,
   TextField,
   FormControl,
+  FormHelperText,
   InputLabel,
   Select,
   MenuItem,
@@ -115,6 +116,7 @@ const AssetUploader = ({ onClose }) => {
     type: '',
     tags: [],
     compatibleWith: [],
+    ownedVariant: '', // New field to track which variant the user owns
     notes: '',
   });
   const [uploading, setUploading] = useState(false);
@@ -129,6 +131,7 @@ const AssetUploader = ({ onClose }) => {
   const [showNewAvatarBaseInput, setShowNewAvatarBaseInput] = useState(false);
   const [newAvatarBaseName, setNewAvatarBaseInput] = useState('');
   const [newAvatarBaseId, setNewAvatarBaseId] = useState('');
+  const [ownedVariant, setOwnedVariant] = useState(''); // New state for owned variant
   
   // Get data and functions from API context
   const { assetsAPI, avatarsAPI, fetchAssets } = useApi();
@@ -301,6 +304,28 @@ const AssetUploader = ({ onClose }) => {
       ...assetData,
       compatibleWith: selectedValues,
     });
+    
+    // Handle owned variant logic - if the previously selected owned variant
+    // is no longer in the compatibility list, clear it
+    if (ownedVariant && !selectedValues.includes(ownedVariant)) {
+      setOwnedVariant('');
+      setAssetData(prev => ({
+        ...prev,
+        ownedVariant: ''
+      }));
+    }
+  };
+
+  // Handle owned variant selection
+  const handleOwnedVariantChange = (event) => {
+    const { value } = event.target;
+    setOwnedVariant(value);
+    
+    // Update the assetData state with the new owned variant
+    setAssetData(prev => ({
+      ...prev,
+      ownedVariant: value
+    }));
   };
 
   const handleSubmit = async () => {
@@ -331,13 +356,16 @@ const AssetUploader = ({ onClose }) => {
         // Use the determined thumbnail URL
         thumbnail: thumbnailUrl,
         // Make sure type is set correctly
-        type: assetData.type
+        type: assetData.type,
+        // Include owned variant
+        ownedVariant: assetData.ownedVariant || null
       };
       
       // Log the data being sent for debugging
       console.log('Sending asset data:', { 
         thumbnail: assetForApi.thumbnail,
-        serverUploadedImage: assetData.serverUploadedImage
+        serverUploadedImage: assetData.serverUploadedImage,
+        ownedVariant: assetForApi.ownedVariant
       });
       
       // Call API to create asset
@@ -367,8 +395,10 @@ const AssetUploader = ({ onClose }) => {
       type: '',
       tags: [],
       compatibleWith: [],
+      ownedVariant: '', // Reset owned variant
       notes: '',
     });
+    setOwnedVariant(''); // Reset owned variant state
     setImageFile(null);
     setImagePreview('');
     setUploadSuccess(false);
@@ -755,6 +785,54 @@ const AssetUploader = ({ onClose }) => {
                   </Select>
                 </FormControl>
 
+                <Box sx={{ mt: 3, mb: 3 }}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>Owned Variants</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Select which specific variants of this asset you own. This helps track what you can use immediately vs. what you'd need to purchase.
+                  </Typography>
+                  
+                  <FormControl fullWidth>
+                    <InputLabel>Owned Variants</InputLabel>
+                    <Select
+                      multiple
+                      name="ownedVariants"
+                      value={assetData.ownedVariant ? Array.isArray(assetData.ownedVariant) ? assetData.ownedVariant : [assetData.ownedVariant] : []}
+                      onChange={(event) => {
+                        const selectedVariants = event.target.value;
+                        setAssetData(prev => ({
+                          ...prev,
+                          ownedVariant: selectedVariants // Now storing as array
+                        }));
+                      }}
+                      input={<OutlinedInput label="Owned Variants" />}
+                      renderValue={(selected) => (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {selected.map((value) => (
+                            <Chip key={value} label={value} />
+                          ))}
+                        </Box>
+                      )}
+                      MenuProps={MenuProps}
+                    >
+                      {assetData.compatibleWith.map((base) => (
+                        <MenuItem key={`owned-${base}`} value={base}>
+                          <Checkbox checked={assetData.ownedVariant && 
+                            (Array.isArray(assetData.ownedVariant) ? 
+                              assetData.ownedVariant.indexOf(base) > -1 : 
+                              assetData.ownedVariant === base)} 
+                          />
+                          <ListItemText primary={base} />
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    <FormHelperText>
+                      {assetData.compatibleWith.length > 0 
+                        ? 'Select the specific avatar base versions you purchased' 
+                        : 'First select compatible bases above'}
+                    </FormHelperText>
+                  </FormControl>
+                </Box>
+
                 <Alert severity="info" sx={{ mb: 3 }}>
                   Being specific about compatibility helps you find suitable assets for your avatars later.
                 </Alert>
@@ -841,6 +919,19 @@ const AssetUploader = ({ onClose }) => {
                             <Typography variant="body1" fontStyle="italic">None specified</Typography>
                           )}
                         </Box>
+                      </Box>
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="body2" color="text.secondary">Owned Variant</Typography>
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            fontWeight: assetData.ownedVariant ? 'bold' : 'normal',
+                            color: assetData.ownedVariant ? 'primary.main' : 'text.secondary',
+                            fontStyle: assetData.ownedVariant ? 'normal' : 'italic'
+                          }}
+                        >
+                          {assetData.ownedVariant || 'Not specified'}
+                        </Typography>
                       </Box>
                     </Grid>
                     

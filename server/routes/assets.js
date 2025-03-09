@@ -10,6 +10,18 @@ const { body, param, query, validationResult } = require('express-validator');
  * @returns {Object} Formatted asset
  */
 const formatAsset = (asset) => {
+  // Parse the ownedVariant field if it's a JSON string
+  let ownedVariant = asset.owned_variant;
+  if (ownedVariant && typeof ownedVariant === 'string') {
+    try {
+      // Try to parse as JSON in case it's stored as an array
+      ownedVariant = JSON.parse(ownedVariant);
+    } catch (e) {
+      // If it's not valid JSON, keep as is
+      console.log('Note: owned_variant is not a JSON string:', ownedVariant);
+    }
+  }
+
   return {
     id: asset.id,
     name: asset.name,
@@ -26,7 +38,8 @@ const formatAsset = (asset) => {
     favorited: asset.favorited === 1,
     notes: asset.notes,
     tags: asset.tags || [],
-    compatibleWith: asset.compatibleWith || []
+    compatibleWith: asset.compatibleWith || [],
+    ownedVariant: ownedVariant
   };
 };
 
