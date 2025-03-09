@@ -17,14 +17,12 @@ import {
   Card,
   CardMedia,
   CardContent,
-  CardActionArea,
-  Tooltip,
-  Snackbar
+  CardActionArea
 } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import CloseIcon from '@mui/icons-material/Close';
-import DownloadIcon from '@mui/icons-material/Download';
+import PublicIcon from '@mui/icons-material/Public';
 import { styled } from '@mui/material/styles';
 
 // Import API context
@@ -43,13 +41,12 @@ const ResultItem = styled(Box)(({ theme, status }) => ({
 }));
 
 // Asset card for the compatible assets list
-const AssetCard = styled(Card)(({ theme, owned }) => ({
+const AssetCard = styled(Card)(({ theme, owned, universal }) => ({
   height: '100%',
   display: 'flex',
   flexDirection: 'column',
   position: 'relative',
   transition: 'transform 0.2s ease-in-out',
-  cursor: 'pointer',  // Add cursor pointer to indicate it's clickable
   '&:hover': {
     transform: 'translateY(-4px)',
     boxShadow: theme.shadows[6],
@@ -57,6 +54,9 @@ const AssetCard = styled(Card)(({ theme, owned }) => ({
   ...(owned === false && {
     opacity: 0.7,
     border: '1px dashed rgba(255,255,255,0.2)',
+  }),
+  ...(universal && {
+    border: '2px solid rgba(0,184,148,0.3)',
   }),
 }));
 
@@ -76,23 +76,20 @@ const OwnershipBadge = styled(Box)(({ theme, owned }) => ({
   zIndex: 1,
 }));
 
-// Download button overlay
-const DownloadOverlay = styled(Box)(({ theme }) => ({
+const UniversalBadge = styled(Box)(({ theme }) => ({
   position: 'absolute',
-  top: 0,
-  left: 0,
-  width: '100%',
-  height: '100%',
-  backgroundColor: 'rgba(0,0,0,0.5)',
+  top: 8,
+  left: 8,
+  padding: '4px 8px',
+  borderRadius: 12,
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'center',
-  opacity: 0,
-  transition: 'opacity 0.2s ease-in-out',
-  zIndex: 2,
-  '&:hover': {
-    opacity: 1,
-  },
+  gap: 4,
+  fontSize: 12,
+  fontWeight: 500,
+  backgroundColor: theme.palette.info.main,
+  color: '#fff',
+  zIndex: 1,
 }));
 
 // Note: In the future, this could be fetched from the backend
@@ -147,8 +144,6 @@ const CompatibilityChecker = () => {
   const [mode, setMode] = useState('list'); // 'asset' or 'list'
   const [compatibilityData, setCompatibilityData] = useState(compatibilityMatrix);
   const [searchAttempted, setSearchAttempted] = useState(false);
-  // Add a state for notifications
-  const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' });
 
   // Get all assets from api context
   const allAssets = assets.all || [];
@@ -195,7 +190,13 @@ const CompatibilityChecker = () => {
         
         // Handle case where compatibleWith is not an array or is undefined
         if (!asset.compatibleWith || !Array.isArray(asset.compatibleWith)) {
-          return false;
+          // Treat props and accessories without compatibility info as universally compatible
+          return asset.type === 'Prop' || asset.type === 'Accessory';
+        }
+        
+        // If compatibleWith is an empty array, consider it universally compatible for props and accessories
+        if (asset.compatibleWith.length === 0 && (asset.type === 'Prop' || asset.type === 'Accessory')) {
+          return true;
         }
         
         // Check each base in the compatibleWith array
@@ -225,7 +226,18 @@ const CompatibilityChecker = () => {
           }
         }
         
-        return { ...asset, owned };
+        // For props and accessories without compatibility info, mark as universally compatible
+        const isUniversallyCompatible = 
+          (!asset.compatibleWith || 
+           !Array.isArray(asset.compatibleWith) || 
+           asset.compatibleWith.length === 0) && 
+          (asset.type === 'Prop' || asset.type === 'Accessory');
+        
+        return { 
+          ...asset, 
+          owned,
+          isUniversallyCompatible 
+        };
       });
       
       setCompatibleAssets(enhancedCompatibleAssets);
@@ -267,12 +279,21 @@ const CompatibilityChecker = () => {
         setLocalLoading(false);
         return;
       }
+
+      // Check if this is a Prop or Accessory without compatibility info (universally compatible)
+      const isUniversallyCompatible = 
+        (!selectedAsset.compatibleWith || 
+         !Array.isArray(selectedAsset.compatibleWith) || 
+         selectedAsset.compatibleWith.length === 0) && 
+        (selectedAsset.type === 'Prop' || selectedAsset.type === 'Accessory');
       
-      // Use actual compatibility check - no more simulation
-      const isCompatible = selectedAsset.compatibleWith && 
+      // Use actual compatibility check
+      const isCompatible = isUniversallyCompatible || 
+                           (selectedAsset.compatibleWith && 
+                           Array.isArray(selectedAsset.compatibleWith) &&
                            selectedAsset.compatibleWith.some(base => 
                              base.toLowerCase() === selectedAvatar.base.toLowerCase()
-                           );
+                           ));
       
       // Use actual owned variant check
       const isOwned = selectedAsset.ownedVariant &&
@@ -285,7 +306,8 @@ const CompatibilityChecker = () => {
       
       mockResults = {
         overall: isCompatible ? 'yes' : 'partial',
-        owned: isOwned
+        owned: isOwned,
+        isUniversallyCompatible
       };
       
       setResults(mockResults);
@@ -308,39 +330,10 @@ const CompatibilityChecker = () => {
     }
   };
 
-  // Updated handler for asset card click to open download link
-  const handleAssetCardClick = async (assetId) => {
-    // Find the asset from the compatible assets
-    const selectedAsset = compatibleAssets.find(asset => asset.id === assetId);
-    
-    if (selectedAsset) {
-      try {
-        // Check if download URL exists
-        if (selectedAsset.downloadUrl) {
-          // Open the download URL in a new tab
-          window.open(selectedAsset.downloadUrl, '_blank');
-        } else {
-          // Show notification that there's no download link
-          setNotification({
-            open: true,
-            message: 'No download link available for this asset',
-            severity: 'warning'
-          });
-        }
-      } catch (error) {
-        console.error('Error handling asset click:', error);
-        setNotification({
-          open: true,
-          message: 'Error opening download link',
-          severity: 'error'
-        });
-      }
-    }
-  };
-
-  // Close notification handler
-  const handleCloseNotification = () => {
-    setNotification(prev => ({ ...prev, open: false }));
+  // Handle asset card click
+  const handleAssetCardClick = (assetId) => {
+    // In a real implementation, this would open the asset details modal
+    console.log('Asset clicked:', assetId);
   };
 
   // Show loading state if loading data from API
@@ -488,12 +481,15 @@ const CompatibilityChecker = () => {
           <Grid container spacing={3}>
             {compatibleAssets.map((asset) => (
               <Grid item xs={12} sm={6} md={4} key={asset.id}>
-                <Tooltip 
-                  title={asset.downloadUrl ? "Click to open download link" : "No download link available"} 
-                  arrow
-                >
-                  <AssetCard owned={asset.owned}>
-                    <CardActionArea onClick={() => handleAssetCardClick(asset.id)}>
+                <AssetCard owned={asset.owned} universal={asset.isUniversallyCompatible}>
+                  <CardActionArea onClick={() => handleAssetCardClick(asset.id)}>
+                    {asset.isUniversallyCompatible && (
+                      <UniversalBadge>
+                        <PublicIcon fontSize="small" sx={{ mr: 0.5 }} />
+                        Universal
+                      </UniversalBadge>
+                    )}
+                    { asset.type !== 'Prop' && asset.type !== 'Accessory' ?
                       <OwnershipBadge owned={asset.owned}>
                         {asset.owned ? (
                           <>
@@ -507,38 +503,27 @@ const CompatibilityChecker = () => {
                           </>
                         )}
                       </OwnershipBadge>
-                      
-                      {/* Add download overlay that appears on hover */}
-                      <DownloadOverlay>
-                        <Button
-                          variant="contained"
-                          startIcon={<DownloadIcon />}
-                          disabled={!asset.downloadUrl}
-                        >
-                          Download
-                        </Button>
-                      </DownloadOverlay>
-                      
-                      <CardMedia
-                        component="img"
-                        height="140"
-                        image={asset.thumbnail}
-                        alt={asset.name}
-                      />
-                      <CardContent>
-                        <Typography variant="h3">{asset.name}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {asset.type} • by {asset.creator}
-                        </Typography>
-                        <Box sx={{ display: 'flex', mt: 1, flexWrap: 'wrap', gap: 0.5 }}>
-                          {asset.tags && asset.tags.slice(0, 2).map((tag, idx) => (
-                            <Chip key={idx} label={tag} size="small" variant="outlined" />
-                          ))}
-                        </Box>
-                      </CardContent>
-                    </CardActionArea>
-                  </AssetCard>
-                </Tooltip>
+                      : ""
+                    }
+                    <CardMedia
+                      component="img"
+                      height="140"
+                      image={asset.thumbnail}
+                      alt={asset.name}
+                    />
+                    <CardContent>
+                      <Typography variant="h3">{asset.name}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {asset.type} • by {asset.creator}
+                      </Typography>
+                      <Box sx={{ display: 'flex', mt: 1, flexWrap: 'wrap', gap: 0.5 }}>
+                        {asset.tags && asset.tags.slice(0, 2).map((tag, idx) => (
+                          <Chip key={idx} label={tag} size="small" variant="outlined" />
+                        ))}
+                      </Box>
+                    </CardContent>
+                  </CardActionArea>
+                </AssetCard>
               </Grid>
             ))}
           </Grid>
@@ -556,16 +541,21 @@ const CompatibilityChecker = () => {
             severity={getStatusSeverity(results.overall)}
             sx={{ mb: 3 }}
           >
-            {results.overall === 'yes'
-              ? 'This asset is compatible with your avatar!'
-              : results.overall === 'mostly'
-              ? 'This asset is mostly compatible with your avatar with minor adjustments needed.'
-              : results.overall === 'partial'
-              ? 'This asset was not made for this avatar and will require significant adjustments.'
-              : results.overall === 'no'
-              ? 'This asset is not compatible with your avatar.'
-              : 'Compatibility is unknown - you may need to test manually.'
-            }
+            {results.isUniversallyCompatible ? (
+              <>
+                <strong>This is a universally compatible asset!</strong> Props and accessories without specific compatibility settings work with all avatar bases.
+              </>
+            ) : results.overall === 'yes' ? (
+              'This asset is compatible with your avatar!'
+            ) : results.overall === 'mostly' ? (
+              'This asset is mostly compatible with your avatar with minor adjustments needed.'
+            ) : results.overall === 'partial' ? (
+              'This asset was not made for this avatar and will require significant adjustments.'
+            ) : results.overall === 'no' ? (
+              'This asset is not compatible with your avatar.'
+            ) : (
+              'Compatibility is unknown - you may need to test manually.'
+            )}
           </Alert>
           
           {/* Add ownership badge for asset mode */}
@@ -605,23 +595,6 @@ const CompatibilityChecker = () => {
           No compatible assets found for {avatarBase}. Try selecting a different avatar base.
         </Alert>
       )}
-      
-      {/* Notification Snackbar */}
-      <Snackbar
-        open={notification.open}
-        autoHideDuration={6000}
-        onClose={handleCloseNotification}
-        message={notification.message}
-      >
-        <Alert 
-          onClose={handleCloseNotification} 
-          severity={notification.severity} 
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {notification.message}
-        </Alert>
-      </Snackbar>
     </Paper>
   );
 };
