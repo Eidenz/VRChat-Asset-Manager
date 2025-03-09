@@ -1,5 +1,5 @@
 // src/pages/Avatars.js
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -21,15 +21,12 @@ import {
   CardMedia,
   CardContent,
   IconButton,
-  Tooltip,
   Paper,
   Tab,
   Tabs,
   FormControl,
   InputLabel,
   Select,
-  FormControlLabel,
-  Switch,
   Alert
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
@@ -102,6 +99,7 @@ const Avatars = () => {
   // Get avatars and functions from API context
   const { 
     avatars, 
+    assets,
     loading,
     errors,
     fetchAvatars,
@@ -228,6 +226,38 @@ const Avatars = () => {
       default:
         return sorted;
     }
+  };
+
+  const getAssetCompatibilityStats = (avatar) => {
+    if (!avatar || !assets.all) return { compatible: 0, owned: 0 };
+    
+    const compatibleAssets = assets.all.filter(asset => {
+      // Make sure compatibleWith exists and is an array
+      if (!asset.compatibleWith || !Array.isArray(asset.compatibleWith)) return false;
+      
+      // Check if any compatibility entry matches this avatar's base
+      return asset.compatibleWith.some(base => 
+        base.toLowerCase() === avatar.base.toLowerCase()
+      );
+    });
+    
+    // Count owned assets
+    const ownedAssets = compatibleAssets.filter(asset => {
+      if (!asset.ownedVariant) return false;
+      
+      if (Array.isArray(asset.ownedVariant)) {
+        return asset.ownedVariant.some(variant => 
+          variant.toLowerCase() === avatar.base.toLowerCase()
+        );
+      } else {
+        return asset.ownedVariant.toLowerCase() === avatar.base.toLowerCase();
+      }
+    });
+    
+    return {
+      compatible: compatibleAssets.length,
+      owned: ownedAssets.length
+    };
   };
 
   const handleAddNewAvatarBase = async () => {
@@ -1083,6 +1113,37 @@ const Avatars = () => {
                         />
                       </Grid>
                     </Grid>
+                  </Paper>
+                  
+                  <Typography variant="h3" sx={{ mb: 1 }}>Asset Compatibility</Typography>
+                  <Paper sx={{ p: 2, mb: 3 }}>
+                    {(() => {
+                      const stats = getAssetCompatibilityStats(selectedAvatar);
+                      return (
+                        <Grid container spacing={2}>
+                          <Grid item xs={6}>
+                            <Box sx={{ textAlign: 'center', p: 1 }}>
+                              <Typography variant="h2" color="primary">
+                                {stats.compatible}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Compatible Assets
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Box sx={{ textAlign: 'center', p: 1 }}>
+                              <Typography variant="h2" color="success.main">
+                                {stats.owned}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Owned Assets
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        </Grid>
+                      );
+                    })()}
                   </Paper>
                   
                   <Typography variant="h3" sx={{ mb: 1 }}>File Location</Typography>

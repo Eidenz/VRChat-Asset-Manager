@@ -48,6 +48,7 @@ const CollectionDetail = () => {
     addAssetToCollection,
     removeAssetFromCollection,
     assetsAPI,
+    collectionsAPI,
     loading
   } = useApi();
   
@@ -266,15 +267,24 @@ const CollectionDetail = () => {
 
   const handleAddAssetToCollection = async () => {
     try {
-      // Add each selected asset to the collection
+      // Get an array of asset IDs to add
       const assetIds = selectedAssets.map(asset => asset.id);
-      await addAssetToCollection(collection.id, assetIds);
       
-      // Refresh the assets list
+      if (assetIds.length === 0) {
+        console.warn('No assets selected to add');
+        return;
+      }
+      
+      console.log('Adding assets to collection:', collection.id, assetIds);
+      
+      // Use the batch API to add multiple assets at once
+      await collectionsAPI.addAssets(collection.id, assetIds);
+      
+      // Refresh assets to reflect changes
       const updatedAssets = await fetchCollectionAssets(id);
       setAssets(updatedAssets);
       
-      // Close the dialog and reset selection
+      // Close the dialog and clear selection
       handleCloseAddAssetDialog();
     } catch (err) {
       console.error('Error adding assets to collection:', err);

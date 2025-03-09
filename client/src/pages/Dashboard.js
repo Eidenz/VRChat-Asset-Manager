@@ -242,7 +242,7 @@ const Dashboard = () => {
                     </IconButton>
                   </Box>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1 }}>
-                    {collections.slice(0, 3).map((collection) => (
+                    {collections.slice(0, 4).map((collection) => (
                       <Card 
                         key={collection.id} 
                         variant="outlined"
