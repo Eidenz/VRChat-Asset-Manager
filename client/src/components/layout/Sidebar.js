@@ -11,6 +11,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import LayersIcon from '@mui/icons-material/Layers';
 import SettingsIcon from '@mui/icons-material/Settings';
+import WidgetsIcon from '@mui/icons-material/Widgets';
 
 // Custom styled NavLink component
 const StyledNavLink = styled(NavLink)(({ theme }) => ({
@@ -97,6 +98,12 @@ const Sidebar = () => {
             <StyledNavLink to="/textures">
               <ListItemIcon sx={{ minWidth: 36 }}><BrushIcon /></ListItemIcon>
               <ListItemText primary="Textures" />
+            </StyledNavLink>
+          </ListItem>
+          <ListItem disablePadding>
+            <StyledNavLink to="/others">
+              <ListItemIcon sx={{ minWidth: 36 }}><WidgetsIcon /></ListItemIcon>
+              <ListItemText primary="Others" />
             </StyledNavLink>
           </ListItem>
           <ListItem disablePadding>

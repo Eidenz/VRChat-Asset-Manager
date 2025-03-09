@@ -19,6 +19,7 @@ import Favorites from './pages/Favorites';
 import Collections from './pages/Collections';
 import CollectionDetail from './pages/CollectionDetail';
 import Settings from './pages/Settings';
+import Others from './pages/Others';
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
               <Route path="clothing" element={<Clothing />} />
               <Route path="props" element={<Props />} />
               <Route path="textures" element={<Textures />} />
+              <Route path="others" element={<Others />} />
               <Route path="avatars" element={<Avatars />} />
               <Route path="favorites" element={<Favorites />} />
               <Route path="collections" element={<Collections />} />
