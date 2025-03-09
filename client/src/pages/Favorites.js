@@ -1,4 +1,4 @@
-// src/pages/Favorites.js
+// src/pages/Favorites.js - with fixed "All" tab to show both assets and avatars
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -53,6 +53,9 @@ const Favorites = () => {
     tags: []
   });
 
+  // Get favorited avatars
+  const favoritedAvatars = avatars.filter(avatar => avatar.favorited);
+
   // Calculate available filters from favorited assets
   useEffect(() => {
     if (assets.favorites.length > 0) {
@@ -106,9 +109,6 @@ const Favorites = () => {
     
     setFilteredAssets(itemsToFilter);
   }, [searchQuery, activeFilters, sortOption, assets.favorites, avatars, tabValue]);
-
-  // Get favorited avatars
-  const favoritedAvatars = avatars.filter(avatar => avatar.favorited);
 
   // Sort assets based on selected option
   const sortAssets = (assetList, option) => {
@@ -266,7 +266,9 @@ const Favorites = () => {
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography>
-              {tabValue === 'avatars' 
+              {tabValue === 'all' 
+                ? `${filteredAssets.length + (tabValue === 'all' ? favoritedAvatars.length : 0)} ${filteredAssets.length + (tabValue === 'all' ? favoritedAvatars.length : 0) === 1 ? 'item' : 'items'}`
+                : tabValue === 'avatars' 
                 ? `${favoritedAvatars.length} ${favoritedAvatars.length === 1 ? 'avatar' : 'avatars'}`
                 : `${filteredAssets.length} ${filteredAssets.length === 1 ? 'item' : 'items'}`}
             </Typography>
@@ -379,6 +381,70 @@ const Favorites = () => {
                 </Grid>
               ))}
             </Grid>
+          </motion.div>
+        )
+      ) : tabValue === 'all' ? (
+        // Show both favorited assets and avatars when on the "all" tab
+        (filteredAssets.length === 0 && favoritedAvatars.length === 0) ? (
+          <Box sx={{ textAlign: 'center', py: 8 }}>
+            <Typography variant="h2" sx={{ mb: 2 }}>No Favorites Found</Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+              You haven't favorited any items yet.
+            </Typography>
+          </Box>
+        ) : (
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+          >
+            {/* Display section header if we have both assets and avatars */}
+            {filteredAssets.length > 0 && favoritedAvatars.length > 0 && (
+              <Typography variant="h2" sx={{ mb: 2 }}>
+                Favorited Assets
+              </Typography>
+            )}
+            
+            {/* Assets Grid */}
+            {filteredAssets.length > 0 && (
+              <Grid container spacing={3} sx={{ mb: filteredAssets.length > 0 && favoritedAvatars.length > 0 ? 4 : 0 }}>
+                {filteredAssets.map((asset, index) => (
+                  <Grid item xs={12} sm={6} md={4} key={asset.id}>
+                    <motion.div
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
+                    >
+                      <AssetCard asset={asset} />
+                    </motion.div>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+            
+            {/* Display section header for avatars if we have both assets and avatars */}
+            {filteredAssets.length > 0 && favoritedAvatars.length > 0 && (
+              <Typography variant="h2" sx={{ mt: 4, mb: 2 }}>
+                Favorited Avatars
+              </Typography>
+            )}
+            
+            {/* Avatars Grid */}
+            {favoritedAvatars.length > 0 && (
+              <Grid container spacing={3}>
+                {favoritedAvatars.map((avatar, index) => (
+                  <Grid item xs={12} sm={6} md={4} lg={3} key={avatar.id}>
+                    <motion.div
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
+                    >
+                      <AvatarCard avatar={avatar} />
+                    </motion.div>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
           </motion.div>
         )
       ) : filteredAssets.length === 0 ? (

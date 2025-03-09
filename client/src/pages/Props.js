@@ -1,4 +1,4 @@
-// src/pages/Props.js
+// src/pages/Props.js - with simplified tabs for Props and Accessories
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -53,7 +53,7 @@ const Props = () => {
     tags: [],
     creators: []
   });
-  const [tabValue, setTabValue] = useState('all');
+  const [tabValue, setTabValue] = useState('props');
   const [availableTags, setAvailableTags] = useState([]);
   const [loadingTags, setLoadingTags] = useState(false);
 
@@ -74,42 +74,47 @@ const Props = () => {
     fetchTags();
   }, [assetsAPI]);
 
-  // Extract available filters from props data
+  // Get all props and accessories assets
   useEffect(() => {
-    if (assets.props.length > 0) {
+    // Combine props and accessories to a single array for filtering
+    const propsAndAccessories = [
+      ...assets.props,
+      ...assets.accessories
+    ];
+    
+    if (propsAndAccessories.length > 0) {
       // Extract unique creators
-      const creators = [...new Set(assets.props.map(asset => asset.creator))];
+      const creators = [...new Set(propsAndAccessories.map(asset => asset.creator))];
       
-      // Extract unique tags that only appear in props assets
-      const tags = [...new Set(assets.props.flatMap(asset => asset.tags))];
-      
-      // Get categories from tags for tabs
-      const propCategories = tags.filter(tag => tag !== 'Prop');
+      // Extract unique tags from all props and accessories assets
+      const tags = [...new Set(propsAndAccessories.flatMap(asset => asset.tags || []))];
       
       setAvailableFilters({
         tags,
         creators
       });
     }
-  }, [assets.props]);
+  }, [assets.props, assets.accessories]);
 
-  // Update filtered assets when search or filters change
+  // Update filtered assets when search, filters, or tab changes
   useEffect(() => {
-    if (!assets.props.length) return;
-    
-    let filtered = [...assets.props];
-    
-    // Filter by current tab
-    if (tabValue !== 'all') {
-      filtered = filtered.filter(asset => 
-        asset.tags.some(tag => tag.toLowerCase() === tabValue.toLowerCase())
-      );
+    // Determine which items to filter based on tab
+    let itemsToFilter = [];
+    if (tabValue === 'props') {
+      itemsToFilter = assets.props;
+    } else if (tabValue === 'accessories') {
+      itemsToFilter = assets.accessories;
+    } else {
+      // If we ever add an "all" tab
+      itemsToFilter = [...assets.props, ...assets.accessories];
     }
+    
+    if (!itemsToFilter.length) return;
     
     // Apply search
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(asset => 
+      itemsToFilter = itemsToFilter.filter(asset => 
         asset.name.toLowerCase().includes(query) || 
         asset.creator.toLowerCase().includes(query) ||
         asset.description.toLowerCase().includes(query) ||
@@ -119,23 +124,23 @@ const Props = () => {
     
     // Apply tag filter
     if (activeFilters.tags.length) {
-      filtered = filtered.filter(asset => 
+      itemsToFilter = itemsToFilter.filter(asset => 
         asset.tags.some(tag => activeFilters.tags.includes(tag))
       );
     }
     
     // Apply creator filter
     if (activeFilters.creators.length) {
-      filtered = filtered.filter(asset => 
+      itemsToFilter = itemsToFilter.filter(asset => 
         activeFilters.creators.includes(asset.creator)
       );
     }
     
     // Apply sorting
-    filtered = sortAssets(filtered, sortOption);
+    itemsToFilter = sortAssets(itemsToFilter, sortOption);
     
-    setFilteredAssets(filtered);
-  }, [searchQuery, activeFilters, sortOption, assets.props, tabValue]);
+    setFilteredAssets(itemsToFilter);
+  }, [searchQuery, activeFilters, sortOption, assets.props, assets.accessories, tabValue]);
 
   // Sort assets based on selected option
   const sortAssets = (assetList, option) => {
@@ -223,11 +228,18 @@ const Props = () => {
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
-
-  // Extract prop categories from tags
-  const propCategories = [...new Set(assets.props.flatMap(asset => 
-    asset.tags.filter(tag => tag !== 'Prop')
-  ))];
+  
+  // Get the current display name based on the tab
+  const getDisplayName = () => {
+    switch(tabValue) {
+      case 'props':
+        return 'Props';
+      case 'accessories':
+        return 'Accessories';
+      default:
+        return 'Props & Accessories';
+    }
+  };
 
   return (
     <Box>
@@ -265,13 +277,13 @@ const Props = () => {
               startIcon={<AddIcon />}
               onClick={handleOpenUploadDialog}
             >
-              Add Prop
+              Add {tabValue === 'accessories' ? 'Accessory' : 'Prop'}
             </Button>
           </Box>
         </Box>
       </motion.div>
       
-      {/* Category Tabs */}
+      {/* Category Tabs - Simplified to just Props and Accessories */}
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -281,23 +293,10 @@ const Props = () => {
           <Tabs 
             value={tabValue} 
             onChange={handleTabChange}
-            variant="scrollable"
-            scrollButtons="auto"
             sx={{ mb: 1 }}
           >
-            <Tab label="All Props" value="all" />
-            {/* Common categories */}
-            <Tab label="Weapons" value="Weapon" />
-            <Tab label="Medieval" value="Medieval" />
-            <Tab label="Sci-Fi" value="Sci-Fi" />
-            <Tab label="Fantasy" value="Fantasy" />
-            {/* Dynamic categories */}
-            {propCategories
-              .filter(cat => !['Weapon', 'Medieval', 'Sci-Fi', 'Fantasy'].includes(cat))
-              .map(category => (
-                <Tab key={category} label={category} value={category} />
-              ))
-            }
+            <Tab label="Props" value="props" />
+            <Tab label="Accessories" value="accessories" />
           </Tabs>
         </Box>
       </motion.div>
@@ -361,7 +360,7 @@ const Props = () => {
           
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
-              placeholder="Search props..."
+              placeholder={`Search ${getDisplayName().toLowerCase()}...`}
               size="small"
               value={searchQuery}
               onChange={handleSearchChange}
@@ -401,24 +400,27 @@ const Props = () => {
         </Box>
       ) : errors.assets ? (
         <Box sx={{ textAlign: 'center', py: 8 }}>
-          <Typography variant="h2" color="error" sx={{ mb: 2 }}>Error Loading Props</Typography>
+          <Typography variant="h2" color="error" sx={{ mb: 2 }}>Error Loading {getDisplayName()}</Typography>
           <Typography variant="body1">{errors.assets}</Typography>
         </Box>
       ) : filteredAssets.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 8 }}>
-          <Typography variant="h2" sx={{ mb: 2 }}>No Props Found</Typography>
+          <Typography variant="h2" sx={{ mb: 2 }}>No {getDisplayName()} Found</Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-            {assets.props.length === 0 
+            {tabValue === 'props' && assets.props.length === 0 
               ? "You haven't added any prop assets yet." 
-              : "No props match your current filters."}
+              : tabValue === 'accessories' && assets.accessories.length === 0 
+              ? "You haven't added any accessory assets yet."
+              : "No items match your current filters."}
           </Typography>
-          {assets.props.length === 0 ? (
+          {(tabValue === 'props' && assets.props.length === 0) || 
+           (tabValue === 'accessories' && assets.accessories.length === 0) ? (
             <Button 
               variant="contained" 
               startIcon={<AddIcon />} 
               onClick={handleOpenUploadDialog}
             >
-              Add Your First Prop
+              Add Your First {tabValue === 'accessories' ? 'Accessory' : 'Prop'}
             </Button>
           ) : (
             <Button 

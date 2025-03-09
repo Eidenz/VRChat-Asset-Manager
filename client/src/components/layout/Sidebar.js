@@ -90,7 +90,7 @@ const Sidebar = () => {
           <ListItem disablePadding>
             <StyledNavLink to="/props">
               <ListItemIcon sx={{ minWidth: 36 }}><CubeIcon /></ListItemIcon>
-              <ListItemText primary="Props" />
+              <ListItemText primary="Props & Accessories" />
             </StyledNavLink>
           </ListItem>
           <ListItem disablePadding>
