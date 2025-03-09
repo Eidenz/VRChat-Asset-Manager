@@ -21,7 +21,7 @@ import {
 } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import VerifiedIcon from '@mui/icons-material/Verified';
-import BlockIcon from '@mui/icons-material/Block';
+import CloseIcon from '@mui/icons-material/Close';
 import { styled } from '@mui/material/styles';
 
 // Import API context
@@ -67,7 +67,7 @@ const OwnershipBadge = styled(Box)(({ theme, owned }) => ({
   gap: 4,
   fontSize: 12,
   fontWeight: 500,
-  backgroundColor: owned ? theme.palette.success.main : 'rgba(0,0,0,0.7)',
+  backgroundColor: owned ? theme.palette.success.main : theme.palette.error.main,
   color: '#fff',
   zIndex: 1,
 }));
@@ -116,13 +116,12 @@ const CompatibilityChecker = () => {
   const { avatars, assets, loading, errors, assetsAPI } = useApi();
 
   const [sourceAvatar, setSourceAvatar] = useState('');
-  const [targetAvatar, setTargetAvatar] = useState('');
   const [asset, setAsset] = useState('');
   const [avatarBase, setAvatarBase] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [compatibleAssets, setCompatibleAssets] = useState([]);
-  const [mode, setMode] = useState('list'); // 'asset', 'avatar', or 'list'
+  const [mode, setMode] = useState('list'); // 'asset' or 'list'
   const [compatibilityData, setCompatibilityData] = useState(compatibilityMatrix);
   const [searchAttempted, setSearchAttempted] = useState(false);
 
@@ -135,11 +134,6 @@ const CompatibilityChecker = () => {
 
   const handleSourceAvatarChange = (event) => {
     setSourceAvatar(event.target.value);
-    setResults(null);
-  };
-
-  const handleTargetAvatarChange = (event) => {
-    setTargetAvatar(event.target.value);
     setResults(null);
   };
 
@@ -161,7 +155,6 @@ const CompatibilityChecker = () => {
     setCompatibleAssets([]);
     setSearchAttempted(false);
     setSourceAvatar('');
-    setTargetAvatar('');
     setAsset('');
     setAvatarBase('');
   };
@@ -226,9 +219,8 @@ const CompatibilityChecker = () => {
       return;
     }
     
-    // For other modes, proceed with regular checks
-    if (mode === 'asset' && (!sourceAvatar || !asset)) return;
-    if (mode === 'avatar' && (!sourceAvatar || !targetAvatar)) return;
+    // For asset mode, proceed with regular checks
+    if (!sourceAvatar || !asset) return;
     
     setLocalLoading(true);
     
@@ -238,49 +230,38 @@ const CompatibilityChecker = () => {
       
       let mockResults;
       
-      if (mode === 'asset') {
-        // Check asset compatibility with avatar
-        const selectedAsset = allAssets.find(a => a.id.toString() === asset);
-        if (!selectedAsset) {
-          setLocalLoading(false);
-          return;
-        }
-        
-        const selectedAvatar = allAvatars.find(a => a.id.toString() === sourceAvatar);
-        if (!selectedAvatar) {
-          setLocalLoading(false);
-          return;
-        }
-        
-        // Use actual compatibility check - no more simulation
-        const isCompatible = selectedAsset.compatibleWith && 
-                             selectedAsset.compatibleWith.some(base => 
-                               base.toLowerCase() === selectedAvatar.base.toLowerCase()
-                             );
-        
-        // Use actual owned variant check
-        const isOwned = selectedAsset.ownedVariant &&
-                        (Array.isArray(selectedAsset.ownedVariant)
-                          ? selectedAsset.ownedVariant.some(variant =>
-                              variant.toLowerCase() === selectedAvatar.base.toLowerCase()
-                            )
-                          : selectedAsset.ownedVariant.toLowerCase() === selectedAvatar.base.toLowerCase()
-                        );
-        
-        mockResults = {
-          overall: isCompatible ? 'yes' : 'partial',
-          owned: isOwned
-        };
-      } else if (mode === 'avatar') {
-        // Rest of the avatar compatibility check remains the same
-        const sourceAvatarObj = allAvatars.find(a => a.id.toString() === sourceAvatar);
-        const targetAvatarObj = allAvatars.find(a => a.id.toString() === targetAvatar);
-        
-        if (!sourceAvatarObj || !targetAvatarObj) {
-          setLocalLoading(false);
-          return;
-        }
+      // Check asset compatibility with avatar
+      const selectedAsset = allAssets.find(a => a.id.toString() === asset);
+      if (!selectedAsset) {
+        setLocalLoading(false);
+        return;
       }
+      
+      const selectedAvatar = allAvatars.find(a => a.id.toString() === sourceAvatar);
+      if (!selectedAvatar) {
+        setLocalLoading(false);
+        return;
+      }
+      
+      // Use actual compatibility check - no more simulation
+      const isCompatible = selectedAsset.compatibleWith && 
+                           selectedAsset.compatibleWith.some(base => 
+                             base.toLowerCase() === selectedAvatar.base.toLowerCase()
+                           );
+      
+      // Use actual owned variant check
+      const isOwned = selectedAsset.ownedVariant &&
+                      (Array.isArray(selectedAsset.ownedVariant)
+                        ? selectedAsset.ownedVariant.some(variant =>
+                            variant.toLowerCase() === selectedAvatar.base.toLowerCase()
+                          )
+                        : selectedAsset.ownedVariant.toLowerCase() === selectedAvatar.base.toLowerCase()
+                      );
+      
+      mockResults = {
+        overall: isCompatible ? 'yes' : 'partial',
+        owned: isOwned
+      };
       
       setResults(mockResults);
     } catch (error) {
@@ -348,7 +329,6 @@ const CompatibilityChecker = () => {
           >
             <MenuItem value="list">List all compatible assets for an avatar base</MenuItem>
             <MenuItem value="asset">Asset compatibility with an avatar</MenuItem>
-            <MenuItem value="avatar">Avatar-to-avatar compatibility (for porting assets)</MenuItem>
           </Select>
         </FormControl>
       </Box>
@@ -438,60 +418,6 @@ const CompatibilityChecker = () => {
         </Grid>
       )}
       
-      {mode === 'avatar' && (
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={5}>
-            <FormControl fullWidth variant="outlined">
-              <InputLabel id="source-avatar-select-label">Source Avatar</InputLabel>
-              <Select
-                labelId="source-avatar-select-label"
-                id="source-avatar-select"
-                value={sourceAvatar}
-                onChange={handleSourceAvatarChange}
-                label="Source Avatar"
-              >
-                <MenuItem value=""><em>Select an avatar</em></MenuItem>
-                {avatars.map((avatar) => (
-                  <MenuItem key={avatar.id} value={avatar.id.toString()}>
-                    {avatar.name} ({avatar.base})
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={5}>
-            <FormControl fullWidth variant="outlined">
-              <InputLabel id="target-avatar-select-label">Target Avatar</InputLabel>
-              <Select
-                labelId="target-avatar-select-label"
-                id="target-avatar-select"
-                value={targetAvatar}
-                onChange={handleTargetAvatarChange}
-                label="Target Avatar"
-              >
-                <MenuItem value=""><em>Select target avatar</em></MenuItem>
-                {avatars.map((avatar) => (
-                  <MenuItem key={avatar.id} value={avatar.id.toString()}>
-                    {avatar.name} ({avatar.base})
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={2}>
-            <Button 
-              variant="contained" 
-              fullWidth 
-              sx={{ height: '56px' }}
-              disabled={localLoading || !sourceAvatar || !targetAvatar}
-              onClick={checkCompatibility}
-            >
-              {localLoading ? <CircularProgress size={24} color="inherit" /> : 'Check'}
-            </Button>
-          </Grid>
-        </Grid>
-      )}
-      
       {/* Compatible Assets List (for "list" mode) */}
       {mode === 'list' && compatibleAssets.length > 0 && (
         <Box sx={{ mt: 3 }}>
@@ -504,11 +430,6 @@ const CompatibilityChecker = () => {
               color="primary" 
             />
           </Box>
-          
-          <Alert severity="info" sx={{ mb: 3 }}>
-            Assets marked with <VerifiedIcon fontSize="small" sx={{ color: 'success.main', mx: 0.5 }} /> 
-            are owned by you for this avatar base. Others are compatible but you don't own the specific variant.
-          </Alert>
           
           <Grid container spacing={3}>
             {compatibleAssets.map((asset) => (
@@ -523,7 +444,7 @@ const CompatibilityChecker = () => {
                         </>
                       ) : (
                         <>
-                          <BlockIcon fontSize="small" />
+                          <CloseIcon fontSize="small" />
                           Not Owned
                         </>
                       )}
@@ -553,8 +474,8 @@ const CompatibilityChecker = () => {
         </Box>
       )}
       
-      {/* Compatibility Results (for "asset" and "avatar" modes) */}
-      {(mode === 'asset' || mode === 'avatar') && results && (
+      {/* Compatibility Results (for "asset" mode) */}
+      {mode === 'asset' && results && (
         <Box sx={{ mt: 3 }}>
           <Divider sx={{ mb: 3 }} />
           
@@ -565,36 +486,44 @@ const CompatibilityChecker = () => {
             sx={{ mb: 3 }}
           >
             {results.overall === 'yes'
-              ? mode === 'asset' 
-                ? 'This asset is compatible with your avatar!'
-                : 'These avatars have excellent compatibility!'
+              ? 'This asset is compatible with your avatar!'
               : results.overall === 'mostly'
-              ? mode === 'asset'
-                ? 'This asset is mostly compatible with your avatar with minor adjustments needed.'
-                : 'These avatars have good compatibility with minor adjustments needed.'
+              ? 'This asset is mostly compatible with your avatar with minor adjustments needed.'
               : results.overall === 'partial'
-              ? mode === 'asset'
-                ? 'This asset has partial compatibility and will require significant adjustments.'
-                : 'These avatars have partial compatibility and will require significant work to port assets between them.'
+              ? 'This asset was not made for this avatar and will require significant adjustments.'
               : results.overall === 'no'
-              ? mode === 'asset'
-                ? 'This asset is not compatible with your avatar.'
-                : 'These avatars are not compatible for asset sharing.'
+              ? 'This asset is not compatible with your avatar.'
               : 'Compatibility is unknown - you may need to test manually.'
             }
           </Alert>
           
           {/* Add ownership badge for asset mode */}
           {mode === 'asset' && results.owned !== undefined && (
-            <Alert 
-              severity={results.owned ? 'success' : 'warning'} 
-              sx={{ mb: 3 }}
-              icon={results.owned ? <VerifiedIcon /> : <InfoIcon />}
-            >
-              {results.owned 
-                ? 'You own the correct variant of this asset for your avatar.' 
-                : 'You do not own the specific variant of this asset for this avatar. It may be compatible, but you might need to purchase the correct variant.'}
-            </Alert>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              p: 2, 
+              borderRadius: 1,
+              bgcolor: results.owned ? 'success.main' : 'error.main',
+              color: 'white',
+              mb: 3
+            }}>
+              {results.owned ? (
+                <>
+                  <VerifiedIcon sx={{ mr: 2 }} />
+                  <Typography>
+                    You own the correct variant of this asset for your avatar.
+                  </Typography>
+                </>
+              ) : (
+                <>
+                  <CloseIcon sx={{ mr: 2 }} />
+                  <Typography>
+                    You do not own the specific variant of this asset for this avatar. You might need to purchase the correct variant.
+                  </Typography>
+                </>
+              )}
+            </Box>
           )}
         </Box>
       )}
