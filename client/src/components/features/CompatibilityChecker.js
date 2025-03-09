@@ -17,11 +17,14 @@ import {
   Card,
   CardMedia,
   CardContent,
-  CardActionArea
+  CardActionArea,
+  Tooltip,
+  Snackbar
 } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import CloseIcon from '@mui/icons-material/Close';
+import DownloadIcon from '@mui/icons-material/Download';
 import { styled } from '@mui/material/styles';
 
 // Import API context
@@ -46,6 +49,7 @@ const AssetCard = styled(Card)(({ theme, owned }) => ({
   flexDirection: 'column',
   position: 'relative',
   transition: 'transform 0.2s ease-in-out',
+  cursor: 'pointer',  // Add cursor pointer to indicate it's clickable
   '&:hover': {
     transform: 'translateY(-4px)',
     boxShadow: theme.shadows[6],
@@ -70,6 +74,25 @@ const OwnershipBadge = styled(Box)(({ theme, owned }) => ({
   backgroundColor: owned ? theme.palette.success.main : theme.palette.error.main,
   color: '#fff',
   zIndex: 1,
+}));
+
+// Download button overlay
+const DownloadOverlay = styled(Box)(({ theme }) => ({
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  height: '100%',
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  opacity: 0,
+  transition: 'opacity 0.2s ease-in-out',
+  zIndex: 2,
+  '&:hover': {
+    opacity: 1,
+  },
 }));
 
 // Note: In the future, this could be fetched from the backend
@@ -124,6 +147,8 @@ const CompatibilityChecker = () => {
   const [mode, setMode] = useState('list'); // 'asset' or 'list'
   const [compatibilityData, setCompatibilityData] = useState(compatibilityMatrix);
   const [searchAttempted, setSearchAttempted] = useState(false);
+  // Add a state for notifications
+  const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' });
 
   // Get all assets from api context
   const allAssets = assets.all || [];
@@ -283,10 +308,39 @@ const CompatibilityChecker = () => {
     }
   };
 
-  // Handle asset card click
-  const handleAssetCardClick = (assetId) => {
-    // In a real implementation, this would open the asset details modal
-    console.log('Asset clicked:', assetId);
+  // Updated handler for asset card click to open download link
+  const handleAssetCardClick = async (assetId) => {
+    // Find the asset from the compatible assets
+    const selectedAsset = compatibleAssets.find(asset => asset.id === assetId);
+    
+    if (selectedAsset) {
+      try {
+        // Check if download URL exists
+        if (selectedAsset.downloadUrl) {
+          // Open the download URL in a new tab
+          window.open(selectedAsset.downloadUrl, '_blank');
+        } else {
+          // Show notification that there's no download link
+          setNotification({
+            open: true,
+            message: 'No download link available for this asset',
+            severity: 'warning'
+          });
+        }
+      } catch (error) {
+        console.error('Error handling asset click:', error);
+        setNotification({
+          open: true,
+          message: 'Error opening download link',
+          severity: 'error'
+        });
+      }
+    }
+  };
+
+  // Close notification handler
+  const handleCloseNotification = () => {
+    setNotification(prev => ({ ...prev, open: false }));
   };
 
   // Show loading state if loading data from API
@@ -434,40 +488,57 @@ const CompatibilityChecker = () => {
           <Grid container spacing={3}>
             {compatibleAssets.map((asset) => (
               <Grid item xs={12} sm={6} md={4} key={asset.id}>
-                <AssetCard owned={asset.owned}>
-                  <CardActionArea onClick={() => handleAssetCardClick(asset.id)}>
-                    <OwnershipBadge owned={asset.owned}>
-                      {asset.owned ? (
-                        <>
-                          <VerifiedIcon fontSize="small" />
-                          Owned
-                        </>
-                      ) : (
-                        <>
-                          <CloseIcon fontSize="small" />
-                          Not Owned
-                        </>
-                      )}
-                    </OwnershipBadge>
-                    <CardMedia
-                      component="img"
-                      height="140"
-                      image={asset.thumbnail}
-                      alt={asset.name}
-                    />
-                    <CardContent>
-                      <Typography variant="h3">{asset.name}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {asset.type} • by {asset.creator}
-                      </Typography>
-                      <Box sx={{ display: 'flex', mt: 1, flexWrap: 'wrap', gap: 0.5 }}>
-                        {asset.tags && asset.tags.slice(0, 2).map((tag, idx) => (
-                          <Chip key={idx} label={tag} size="small" variant="outlined" />
-                        ))}
-                      </Box>
-                    </CardContent>
-                  </CardActionArea>
-                </AssetCard>
+                <Tooltip 
+                  title={asset.downloadUrl ? "Click to open download link" : "No download link available"} 
+                  arrow
+                >
+                  <AssetCard owned={asset.owned}>
+                    <CardActionArea onClick={() => handleAssetCardClick(asset.id)}>
+                      <OwnershipBadge owned={asset.owned}>
+                        {asset.owned ? (
+                          <>
+                            <VerifiedIcon fontSize="small" />
+                            Owned
+                          </>
+                        ) : (
+                          <>
+                            <CloseIcon fontSize="small" />
+                            Not Owned
+                          </>
+                        )}
+                      </OwnershipBadge>
+                      
+                      {/* Add download overlay that appears on hover */}
+                      <DownloadOverlay>
+                        <Button
+                          variant="contained"
+                          startIcon={<DownloadIcon />}
+                          disabled={!asset.downloadUrl}
+                        >
+                          Download
+                        </Button>
+                      </DownloadOverlay>
+                      
+                      <CardMedia
+                        component="img"
+                        height="140"
+                        image={asset.thumbnail}
+                        alt={asset.name}
+                      />
+                      <CardContent>
+                        <Typography variant="h3">{asset.name}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {asset.type} • by {asset.creator}
+                        </Typography>
+                        <Box sx={{ display: 'flex', mt: 1, flexWrap: 'wrap', gap: 0.5 }}>
+                          {asset.tags && asset.tags.slice(0, 2).map((tag, idx) => (
+                            <Chip key={idx} label={tag} size="small" variant="outlined" />
+                          ))}
+                        </Box>
+                      </CardContent>
+                    </CardActionArea>
+                  </AssetCard>
+                </Tooltip>
               </Grid>
             ))}
           </Grid>
@@ -534,6 +605,23 @@ const CompatibilityChecker = () => {
           No compatible assets found for {avatarBase}. Try selecting a different avatar base.
         </Alert>
       )}
+      
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={handleCloseNotification}
+        message={notification.message}
+      >
+        <Alert 
+          onClose={handleCloseNotification} 
+          severity={notification.severity} 
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Paper>
   );
 };
