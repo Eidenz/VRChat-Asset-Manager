@@ -1,4 +1,4 @@
-// client/src/services/api.js - Updated API service for better Docker compatibility
+// client/src/services/api.js - Updated with avatar-collection linking functions
 import axios from 'axios';
 
 // Create axios instance with base URL that works in both development and production
@@ -54,6 +54,7 @@ api.interceptors.response.use(
 const avatarsAPI = {
   getAll: () => api.get('/avatars'),
   getById: (id) => api.get(`/avatars/${id}`),
+  getCollections: (id) => api.get(`/avatars/${id}/collections`),
   create: (data) => api.post('/avatars', data),
   update: (id, data) => api.put(`/avatars/${id}`, data),
   toggleCurrent: (id) => api.put(`/avatars/${id}/current`),
@@ -84,12 +85,15 @@ const collectionsAPI = {
   getAll: () => api.get('/collections'),
   getById: (id) => api.get(`/collections/${id}`),
   getAssets: (id) => api.get(`/collections/${id}/assets`),
+  getForAvatar: (avatarId) => api.get(`/collections/avatar/${avatarId}`),
   create: (data) => api.post('/collections', data),
   update: (id, data) => api.put(`/collections/${id}`, data),
   delete: (id) => api.delete(`/collections/${id}`),
   addAsset: (id, assetId) => api.post(`/collections/${id}/assets`, { assetId }),
   addAssets: (id, assetIds) => api.post(`/collections/${id}/assets/batch`, { assetIds }),
   removeAsset: (id, assetId) => api.delete(`/collections/${id}/assets/${assetId}`),
+  linkToAvatar: (id, avatarId) => api.post(`/collections/${id}/link/${avatarId}`),
+  unlinkFromAvatar: (id, avatarId) => api.delete(`/collections/${id}/link/${avatarId}`),
 };
 
 // Settings API services

@@ -21,7 +21,12 @@ import {
   Breadcrumbs,
   Link,
   Tooltip,
-  Alert
+  Alert,
+  Paper,
+  FormControl,
+  Input,
+  Select,
+  InputLabel
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -32,6 +37,10 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import SearchIcon from '@mui/icons-material/Search';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import CheckboxIcon from '@mui/icons-material/CheckBox';
+import LinkIcon from '@mui/icons-material/Link';
+import LinkOffIcon from '@mui/icons-material/LinkOff';
+import PersonIcon from '@mui/icons-material/Person';
+import { styled, alpha } from '@mui/material/styles';
 
 // Import components
 import AssetCard from '../components/ui/AssetCard';
@@ -44,11 +53,14 @@ const CollectionDetail = () => {
   const navigate = useNavigate();
   const { 
     collections, 
+    avatars,
     fetchCollectionAssets, 
     addAssetToCollection,
     removeAssetFromCollection,
     assetsAPI,
     collectionsAPI,
+    linkCollectionToAvatar,
+    unlinkCollectionFromAvatar,
     loading
   } = useApi();
   
@@ -76,6 +88,10 @@ const CollectionDetail = () => {
     tags: []
   });
   const [error, setError] = useState(null);
+  const [linkAvatarDialogOpen, setLinkAvatarDialogOpen] = useState(false);
+  const [availableAvatars, setAvailableAvatars] = useState([]);
+  const [selectedAvatarId, setSelectedAvatarId] = useState('');
+  const [linkingAvatar, setLinkingAvatar] = useState(false);
 
   // Get the collection from the collections list
   useEffect(() => {
@@ -173,6 +189,84 @@ const CollectionDetail = () => {
         return sorted.sort((a, b) => a.type.localeCompare(b.type));
       default:
         return sorted;
+    }
+  };
+
+  const LinkedAvatarCard = styled(Paper)(({ theme }) => ({
+    padding: theme.spacing(2),
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(2),
+    marginBottom: theme.spacing(3),
+    backgroundColor: alpha(theme.palette.primary.main, 0.08),
+    border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+    borderRadius: theme.shape.borderRadius,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease-in-out',
+    '&:hover': {
+      transform: 'translateY(-2px)',
+      boxShadow: theme.shadows[3]
+    }
+  }));
+
+  const handleOpenLinkAvatarDialog = () => {
+    // Filter out already linked avatars if needed
+    setAvailableAvatars(avatars);
+    setSelectedAvatarId('');
+    setLinkAvatarDialogOpen(true);
+  };
+
+  const handleCloseLinkAvatarDialog = () => {
+    setLinkAvatarDialogOpen(false);
+  };
+
+  const handleLinkToAvatar = async () => {
+    if (!selectedAvatarId) {
+      setError('Please select an avatar');
+      return;
+    }
+  
+    setLinkingAvatar(true);
+    try {
+      await linkCollectionToAvatar(collection.id, parseInt(selectedAvatarId));
+      
+      // Update the local collection state
+      const linkedAvatar = avatars.find(avatar => avatar.id === parseInt(selectedAvatarId));
+      setCollection(prev => ({
+        ...prev,
+        linkedAvatarId: parseInt(selectedAvatarId),
+        linkedAvatar: linkedAvatar
+      }));
+      
+      handleCloseLinkAvatarDialog();
+    } catch (err) {
+      console.error('Error linking collection to avatar:', err);
+      setError('Failed to link collection to avatar');
+    } finally {
+      setLinkingAvatar(false);
+    }
+  };
+
+  const handleViewAvatar = () => {
+    if (collection.linkedAvatar) {
+      // Close current detail page
+      navigate('/avatars');
+    }
+  };
+
+  const handleUnlinkAvatar = async () => {
+    try {
+      await unlinkCollectionFromAvatar(collection.id, collection.linkedAvatarId);
+      
+      // Update the local collection state
+      setCollection(prev => ({
+        ...prev,
+        linkedAvatarId: null,
+        linkedAvatar: null
+      }));
+    } catch (error) {
+      console.error('Error unlinking avatar:', error);
+      setError('Failed to unlink avatar');
     }
   };
 
@@ -420,6 +514,17 @@ const CollectionDetail = () => {
             </IconButton>
             <Typography variant="h1">{collection?.name}</Typography>
           </Box>
+
+          {!collection?.linkedAvatar && (
+            <Button
+              variant="outlined"
+              startIcon={<LinkIcon />}
+              onClick={handleOpenLinkAvatarDialog}
+              sx={{ ml: 2 }}
+            >
+              Link to an Avatar
+            </Button>
+          )}
           
           <Button
             variant="contained"
@@ -451,6 +556,38 @@ const CollectionDetail = () => {
               {collection.folderPath}
             </Typography>
           </Box>
+        )}
+
+        {collection?.linkedAvatar && (
+          <LinkedAvatarCard onClick={handleViewAvatar}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+              <Box
+                component="img"
+                src={collection.linkedAvatar.thumbnail}
+                alt={collection.linkedAvatar.name}
+                sx={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover' }}
+              />
+              <Box sx={{ flexGrow: 1 }}>
+                <Typography variant="h3">{collection.linkedAvatar.name}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Base: {collection.linkedAvatar.base}
+                </Typography>
+              </Box>
+              <Box>
+                <Tooltip title="Unlink avatar">
+                  <IconButton 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleUnlinkAvatar();
+                    }}
+                    sx={{ color: 'text.secondary' }}
+                  >
+                    <LinkOffIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </Box>
+          </LinkedAvatarCard>
         )}
       </motion.div>
       
@@ -868,6 +1005,50 @@ const CollectionDetail = () => {
             color="error"
           >
             Remove
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={linkAvatarDialogOpen}
+        onClose={handleCloseLinkAvatarDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Link Collection to Avatar</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Linking this collection to an avatar will make it easier to find assets specifically for that character.
+          </Typography>
+          
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel id="link-avatar-select-label">Select Avatar</InputLabel>
+            <Select
+              labelId="link-avatar-select-label"
+              id="link-avatar-select"
+              value={selectedAvatarId}
+              onChange={(e) => setSelectedAvatarId(e.target.value)}
+              label="Select Avatar"
+            >
+              <MenuItem value="">
+                <em>None</em>
+              </MenuItem>
+              {availableAvatars.map((avatar) => (
+                <MenuItem key={avatar.id} value={avatar.id}>
+                  {avatar.name} ({avatar.base})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseLinkAvatarDialog}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleLinkToAvatar}
+            disabled={!selectedAvatarId || linkingAvatar}
+          >
+            {linkingAvatar ? <CircularProgress size={24} /> : 'Link Avatar'}
           </Button>
         </DialogActions>
       </Dialog>

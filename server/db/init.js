@@ -1,4 +1,4 @@
-// server/db/init.js - Empty database initialization
+// server/db/init.js - Modified to include avatar_collections table
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
@@ -50,7 +50,7 @@ db.serialize(() => {
     thumbnail TEXT NOT NULL,
     date_added TEXT NOT NULL,
     last_used TEXT NOT NULL,
-    file_path TEXT,
+    file_path TEXT NOT NULL,
     notes TEXT,
     favorited INTEGER DEFAULT 0,
     is_current INTEGER DEFAULT 0
@@ -63,6 +63,16 @@ db.serialize(() => {
     thumbnail TEXT NOT NULL,
     date_created TEXT NOT NULL,
     folder_path TEXT
+  )`);
+  
+  // New table for avatar-collection relationships
+  db.run(`CREATE TABLE avatar_collections (
+    avatar_id INTEGER,
+    collection_id INTEGER,
+    date_linked TEXT NOT NULL,
+    PRIMARY KEY (avatar_id, collection_id),
+    FOREIGN KEY (avatar_id) REFERENCES avatars(id) ON DELETE CASCADE,
+    FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
   )`);
   
   db.run(`CREATE TABLE assets (

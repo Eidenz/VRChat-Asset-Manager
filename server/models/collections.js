@@ -1,4 +1,4 @@
-// server/models/collections.js - Collection model
+// server/models/collections.js - Modified to include avatar linking
 const db = require('../db/database');
 const assetsModel = require('./assets');
 const { deleteImageFile } = require('../utils/imageUtils');
@@ -9,7 +9,8 @@ const { deleteImageFile } = require('../utils/imageUtils');
  */
 async function getAllCollections() {
   const collections = await db.all(`
-    SELECT c.*, COUNT(ca.asset_id) as item_count
+    SELECT c.*, COUNT(ca.asset_id) as item_count,
+    (SELECT avatar_id FROM avatar_collections WHERE collection_id = c.id LIMIT 1) as linked_avatar_id
     FROM collections c
     LEFT JOIN collection_assets ca ON c.id = ca.collection_id
     GROUP BY c.id
@@ -26,7 +27,8 @@ async function getAllCollections() {
  */
 async function getCollectionById(id) {
   const collection = await db.get(`
-    SELECT c.*, COUNT(ca.asset_id) as item_count
+    SELECT c.*, COUNT(ca.asset_id) as item_count,
+    (SELECT avatar_id FROM avatar_collections WHERE collection_id = c.id LIMIT 1) as linked_avatar_id
     FROM collections c
     LEFT JOIN collection_assets ca ON c.id = ca.collection_id
     WHERE c.id = ?
@@ -70,29 +72,88 @@ async function getCollectionAssets(collectionId) {
 }
 
 /**
+ * Get collections linked to an avatar
+ * @param {number} avatarId - Avatar ID
+ * @returns {Promise<Array>} Array of collection objects
+ */
+async function getAvatarCollections(avatarId) {
+  const collections = await db.all(`
+    SELECT c.*, COUNT(ca.asset_id) as item_count
+    FROM collections c
+    JOIN avatar_collections ac ON c.id = ac.collection_id
+    LEFT JOIN collection_assets ca ON c.id = ca.collection_id
+    WHERE ac.avatar_id = ?
+    GROUP BY c.id
+    ORDER BY c.date_created DESC
+  `, [avatarId]);
+  
+  return collections;
+}
+
+/**
+ * Get avatar linked to a collection
+ * @param {number} collectionId - Collection ID
+ * @returns {Promise<Object|null>} Avatar object or null if not linked
+ */
+async function getLinkedAvatar(collectionId) {
+  const row = await db.get(`
+    SELECT a.*
+    FROM avatars a
+    JOIN avatar_collections ac ON a.id = ac.avatar_id
+    WHERE ac.collection_id = ?
+  `, [collectionId]);
+  
+  return row || null;
+}
+
+/**
  * Create a new collection
  * @param {Object} collection - Collection object
  * @returns {Promise<Object>} Created collection with ID
  */
 async function createCollection(collection) {
-  const { name, description, thumbnail, folderPath } = collection;
+  const { name, description, thumbnail, folderPath, avatarId } = collection;
   
   const dateCreated = new Date().toISOString();
   
-  const result = await db.run(`
-    INSERT INTO collections (name, description, thumbnail, date_created, folder_path)
-    VALUES (?, ?, ?, ?, ?)
-  `, [name, description, thumbnail, dateCreated, folderPath]);
+  // Start a transaction
+  await db.run('BEGIN TRANSACTION');
   
-  return {
-    id: result.lastID,
-    name,
-    description,
-    thumbnail,
-    dateCreated,
-    folderPath,
-    itemCount: 0
-  };
+  try {
+    // Insert the collection
+    const result = await db.run(`
+      INSERT INTO collections (name, description, thumbnail, date_created, folder_path)
+      VALUES (?, ?, ?, ?, ?)
+    `, [name, description, thumbnail, dateCreated, folderPath]);
+    
+    const collectionId = result.lastID;
+    
+    // If an avatar ID was provided, link it to the collection
+    if (avatarId) {
+      await db.run(`
+        INSERT INTO avatar_collections (avatar_id, collection_id, date_linked)
+        VALUES (?, ?, ?)
+      `, [avatarId, collectionId, dateCreated]);
+    }
+    
+    // Commit the transaction
+    await db.run('COMMIT');
+    
+    return {
+      id: collectionId,
+      name,
+      description,
+      thumbnail,
+      dateCreated,
+      folderPath,
+      itemCount: 0,
+      linkedAvatarId: avatarId || null
+    };
+  } catch (err) {
+    // Rollback on error
+    await db.run('ROLLBACK');
+    throw err;
+  }
 }
 
 /**
@@ -102,24 +163,52 @@ async function createCollection(collection) {
  * @returns {Promise<boolean>} Success status
  */
 async function updateCollection(id, collection) {
-  const { name, description, thumbnail, folderPath } = collection;
+  const { name, description, thumbnail, folderPath, avatarId } = collection;
   
-  const result = await db.run(`
-    UPDATE collections 
-    SET name = ?, 
-        description = ?,
-        ${thumbnail ? 'thumbnail = ?,' : ''}
-        folder_path = ?
-    WHERE id = ?
-  `, [
-    name, 
-    description, 
-    ...(thumbnail ? [thumbnail] : []),
-    folderPath || null, 
-    id
-  ]);
+  // Start a transaction
+  await db.run('BEGIN TRANSACTION');
   
-  return result.changes > 0;
+  try {
+    // Update the collection
+    const result = await db.run(`
+      UPDATE collections 
+      SET name = ?, 
+          description = ?,
+          ${thumbnail ? 'thumbnail = ?,' : ''}
+          folder_path = ?
+      WHERE id = ?
+    `, [
+      name, 
+      description, 
+      ...(thumbnail ? [thumbnail] : []),
+      folderPath || null, 
+      id
+    ]);
+    
+    // Update avatar linkage
+    if (avatarId !== undefined) {
+      // First, remove any existing links
+      await db.run('DELETE FROM avatar_collections WHERE collection_id = ?', [id]);
+      
+      // If avatarId is not null, create a new link
+      if (avatarId) {
+        const dateLinked = new Date().toISOString();
+        await db.run(`
+          INSERT INTO avatar_collections (avatar_id, collection_id, date_linked)
+          VALUES (?, ?, ?)
+        `, [avatarId, id, dateLinked]);
+      }
+    }
+    
+    // Commit the transaction
+    await db.run('COMMIT');
+    
+    return result.changes > 0;
+  } catch (err) {
+    // Rollback on error
+    await db.run('ROLLBACK');
+    throw err;
+  }
 }
 
 /**
@@ -136,7 +225,10 @@ async function deleteCollection(id) {
   await db.run('BEGIN TRANSACTION');
   
   try {
-    // Delete collection assets relations first
+    // Delete collection avatar links first
+    await db.run('DELETE FROM avatar_collections WHERE collection_id = ?', [id]);
+    
+    // Delete collection assets relations
     await db.run('DELETE FROM collection_assets WHERE collection_id = ?', [id]);
     
     // Delete the collection
@@ -157,6 +249,50 @@ async function deleteCollection(id) {
     await db.run('ROLLBACK');
     throw err;
   }
+}
+
+/**
+ * Link a collection to an avatar
+ * @param {number} collectionId - Collection ID
+ * @param {number} avatarId - Avatar ID
+ * @returns {Promise<boolean>} Success status
+ */
+async function linkToAvatar(collectionId, avatarId) {
+  const dateLinked = new Date().toISOString();
+  
+  // Check if the link already exists
+  const exists = await db.get(`
+    SELECT 1 FROM avatar_collections
+    WHERE collection_id = ? AND avatar_id = ?
+  `, [collectionId, avatarId]);
+  
+  if (exists) return true; // Already linked
+  
+  // Delete any existing avatar links for this collection (assuming a collection can only be linked to one avatar)
+  await db.run('DELETE FROM avatar_collections WHERE collection_id = ?', [collectionId]);
+  
+  // Create the new link
+  const result = await db.run(`
+    INSERT INTO avatar_collections (collection_id, avatar_id, date_linked)
+    VALUES (?, ?, ?)
+  `, [collectionId, avatarId, dateLinked]);
+  
+  return result.changes > 0;
+}
+
+/**
+ * Unlink a collection from an avatar
+ * @param {number} collectionId - Collection ID
+ * @param {number} avatarId - Avatar ID
+ * @returns {Promise<boolean>} Success status
+ */
+async function unlinkFromAvatar(collectionId, avatarId) {
+  const result = await db.run(`
+    DELETE FROM avatar_collections
+    WHERE collection_id = ? AND avatar_id = ?
+  `, [collectionId, avatarId]);
+  
+  return result.changes > 0;
 }
 
 /**
@@ -247,9 +383,13 @@ module.exports = {
   getAllCollections,
   getCollectionById,
   getCollectionAssets,
+  getAvatarCollections,
+  getLinkedAvatar,
   createCollection,
   updateCollection,
   deleteCollection,
+  linkToAvatar,
+  unlinkFromAvatar,
   addAssetToCollection,
   addAssetsToCollection,
   removeAssetFromCollection

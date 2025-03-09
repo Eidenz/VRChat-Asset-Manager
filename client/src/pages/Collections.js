@@ -24,6 +24,10 @@ import {
   CircularProgress,
   InputAdornment,
   Alert,
+  FormControl, 
+  InputLabel, 
+  Select,
+  FormHelperText
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import AddIcon from '@mui/icons-material/Add';
@@ -35,13 +39,26 @@ import FolderIcon from '@mui/icons-material/Folder';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import ImageUploader from '../components/ui/ImageUploader';
+import AvatarIcon from '@mui/icons-material/Person';
+import LinkIcon from '@mui/icons-material/Link';
+import LinkOffIcon from '@mui/icons-material/LinkOff';
 
 // Import API context
 import { useApi } from '../context/ApiContext';
 
 const Collections = () => {
   const navigate = useNavigate();
-  const { collections, loading, errors, createCollection, collectionsAPI, fetchCollections } = useApi();
+  const { 
+    collections, 
+    avatars, 
+    loading, 
+    errors, 
+    createCollection, 
+    collectionsAPI, 
+    fetchCollections,
+    linkCollectionToAvatar,
+    unlinkCollectionFromAvatar 
+  } = useApi();
   
   const [currentCollection, setCurrentCollection] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -51,7 +68,8 @@ const Collections = () => {
     name: '',
     description: '',
     folderPath: '',
-    thumbnail: '', // Add this line
+    thumbnail: '',
+    avatarId: null
   });
   const [anchorEl, setAnchorEl] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
@@ -60,6 +78,9 @@ const Collections = () => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [linkAvatarDialogOpen, setLinkAvatarDialogOpen] = useState(false);
+  const [selectedAvatarId, setSelectedAvatarId] = useState('');
+  const [linkingAvatar, setLinkingAvatar] = useState(false);
 
   // Update sorted collections when collections or sort order changes
   React.useEffect(() => {
@@ -77,6 +98,16 @@ const Collections = () => {
     
     setSortedCollections(sorted);
   }, [collections, sortOrder]);
+
+  const getAvatarOptions = () => {
+    // If no avatars are loaded yet, return an empty array
+    if (!avatars || avatars.length === 0) {
+      return [];
+    }
+    
+    // Sort avatars by name for easier selection
+    return [...avatars].sort((a, b) => a.name.localeCompare(b.name));
+  };
 
   const handleOpenMenu = (event, collection) => {
     // Stop propagation to prevent navigation when clicking the menu button
@@ -112,10 +143,40 @@ const Collections = () => {
       name: currentCollection.name,
       description: currentCollection.description || '',
       folderPath: currentCollection.folderPath || '',
-      thumbnail: currentCollection.thumbnail, // Add this line
+      thumbnail: currentCollection.thumbnail,
+      avatarId: currentCollection.linkedAvatarId || null
     });
     setCreateEditDialogOpen(true);
     handleCloseMenu();
+  };
+
+  const handleOpenLinkAvatarDialog = () => {
+    setSelectedAvatarId('');
+    setLinkAvatarDialogOpen(true);
+    handleCloseMenu();
+  };
+  
+  const handleCloseLinkAvatarDialog = () => {
+    setLinkAvatarDialogOpen(false);
+  };
+
+  const handleLinkToAvatar = async () => {
+    if (!selectedAvatarId) {
+      setError('Please select an avatar');
+      return;
+    }
+  
+    setLinkingAvatar(true);
+    try {
+      await linkCollectionToAvatar(currentCollection.id, parseInt(selectedAvatarId));
+      await fetchCollections(); // Refresh collections to update UI
+      handleCloseLinkAvatarDialog();
+    } catch (err) {
+      console.error('Error linking collection to avatar:', err);
+      setError('Failed to link collection to avatar');
+    } finally {
+      setLinkingAvatar(false);
+    }
   };
 
   const handleCloseDialog = () => {
@@ -373,6 +434,14 @@ const Collections = () => {
                             </Typography>
                           </Tooltip>
                         )}
+                        {collection.linkedAvatar && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, gap: 1 }}>
+                            <LinkIcon fontSize="small" color="primary" />
+                            <Typography variant="body2" color="primary.light">
+                              Linked to: {collection.linkedAvatar.name}
+                            </Typography>
+                          </Box>
+                        )}
                       </CardContent>
                     </CardActionArea>
                   </Card>
@@ -435,6 +504,14 @@ const Collections = () => {
                           {collection.description}
                         </Typography>
                       )}
+                      {collection.linkedAvatar && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5, gap: 1 }}>
+                          <LinkIcon fontSize="small" color="primary" />
+                          <Typography variant="body2" color="primary.light">
+                            Linked to: {collection.linkedAvatar.name}
+                          </Typography>
+                        </Box>
+                      )}
                     </Box>
                   </CardActionArea>
                   <Box sx={{ 
@@ -464,6 +541,20 @@ const Collections = () => {
           <EditIcon fontSize="small" sx={{ mr: 1 }} />
           Edit
         </MenuItem>
+        {currentCollection?.linkedAvatarId ? (
+          <MenuItem onClick={() => {
+            unlinkCollectionFromAvatar(currentCollection.id, currentCollection.linkedAvatarId);
+            handleCloseMenu();
+          }}>
+            <LinkOffIcon fontSize="small" sx={{ mr: 1 }} />
+            Unlink from Avatar
+          </MenuItem>
+        ) : (
+          <MenuItem onClick={handleOpenLinkAvatarDialog}>
+            <LinkIcon fontSize="small" sx={{ mr: 1 }} />
+            Link to Avatar
+          </MenuItem>
+        )}
         <MenuItem onClick={handleOpenDeleteConfirm}>
           <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
           Delete
@@ -517,6 +608,38 @@ const Collections = () => {
             onChange={handleInputChange}
             sx={{ mb: 2 }}
           />
+
+          <Grid item xs={12}>
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel id="avatar-select-label">Link to Avatar (Optional)</InputLabel>
+              <Select
+                labelId="avatar-select-label"
+                id="avatar-select"
+                name="avatarId"
+                value={formData.avatarId || ''}
+                onChange={handleInputChange}
+                displayEmpty
+                label="Link to Avatar (Optional)"
+                startAdornment={
+                  <InputAdornment position="start">
+                    <AvatarIcon />
+                  </InputAdornment>
+                }
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {getAvatarOptions().map((avatar) => (
+                  <MenuItem key={avatar.id} value={avatar.id}>
+                    {avatar.name} ({avatar.base})
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>
+                Linking a collection to an avatar helps organize assets specifically for that character
+              </FormHelperText>
+            </FormControl>
+          </Grid>
           
           <TextField
             margin="dense"
@@ -572,6 +695,53 @@ const Collections = () => {
             disabled={deleteLoading}
           >
             {deleteLoading ? <CircularProgress size={24} /> : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={linkAvatarDialogOpen}
+        onClose={handleCloseLinkAvatarDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Link Collection to Avatar</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2, mt: 1 }}>
+            Select an avatar to link to "{currentCollection?.name}"
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Linking a collection to an avatar helps organize assets specifically for that character.
+          </Typography>
+          
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel id="link-avatar-select-label">Select Avatar</InputLabel>
+            <Select
+              labelId="link-avatar-select-label"
+              id="link-avatar-select"
+              value={selectedAvatarId}
+              onChange={(e) => setSelectedAvatarId(e.target.value)}
+              label="Select Avatar"
+            >
+              <MenuItem value="">
+                <em>None</em>
+              </MenuItem>
+              {avatars && avatars.map((avatar) => (
+                <MenuItem key={avatar.id} value={avatar.id}>
+                  {avatar.name} ({avatar.base})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseLinkAvatarDialog}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleLinkToAvatar}
+            disabled={!selectedAvatarId || linkingAvatar}
+          >
+            {linkingAvatar ? <CircularProgress size={24} /> : 'Link Avatar'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -46,6 +46,9 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import CloseIcon from '@mui/icons-material/Close';
+import LinkIcon from '@mui/icons-material/Link';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { useNavigate } from 'react-router-dom';
 
 // Import API context
 import { useApi } from '../context/ApiContext';
@@ -105,7 +108,8 @@ const Avatars = () => {
     fetchAvatars,
     toggleAvatarFavorite,
     toggleAvatarCurrent,
-    avatarsAPI
+    avatarsAPI,
+    fetchAvatarCollections
   } = useApi();
 
   // Local state
@@ -138,6 +142,9 @@ const Avatars = () => {
   const [showNewAvatarBaseInput, setShowNewAvatarBaseInput] = useState(false);
   const [newAvatarBaseName, setNewAvatarBaseInput] = useState('');
   const [newAvatarBaseId, setNewAvatarBaseId] = useState('');
+  const [linkedCollections, setLinkedCollections] = useState([]);
+  const [loadingCollections, setLoadingCollections] = useState(false);
+  const navigate = useNavigate();
 
   // Fetch avatar bases
   useEffect(() => {
@@ -225,6 +232,18 @@ const Avatars = () => {
         return sorted.sort((a, b) => a.base.localeCompare(b.base));
       default:
         return sorted;
+    }
+  };
+
+  const fetchLinkedCollections = async (avatarId) => {
+    setLoadingCollections(true);
+    try {
+      const collections = await fetchAvatarCollections(avatarId);
+      setLinkedCollections(collections);
+    } catch (error) {
+      console.error('Error fetching linked collections:', error);
+    } finally {
+      setLoadingCollections(false);
     }
   };
 
@@ -359,6 +378,7 @@ const Avatars = () => {
 
   const handleAvatarClick = (avatar) => {
     setSelectedAvatar(avatar);
+    fetchLinkedCollections(avatar.id);
     setDetailsDialogOpen(true);
   };
 
@@ -1161,6 +1181,64 @@ const Avatars = () => {
                       {selectedAvatar.filePath}
                     </Typography>
                   </Paper>
+
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="h3" sx={{ mb: 1 }}>
+                      Collections
+                      {loadingCollections && (
+                        <CircularProgress size={16} sx={{ ml: 1 }} />
+                      )}
+                    </Typography>
+                    
+                    {!loadingCollections && linkedCollections.length === 0 ? (
+                      <Paper sx={{ p: 2, backgroundColor: 'background.default' }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                          No collections linked to this avatar yet. You can link collections from the Collections page.
+                        </Typography>
+                      </Paper>
+                    ) : (
+                      <Grid container spacing={2}>
+                        {linkedCollections.map((collection) => (
+                          <Grid item xs={12} sm={6} key={collection.id}>
+                            <Paper 
+                              sx={{ 
+                                p: 2, 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 2,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                '&:hover': {
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: 3
+                                }
+                              }}
+                              onClick={() => {
+                                handleDetailsDialogClose();
+                                navigate(`/collections/${collection.id}`);
+                              }}
+                            >
+                              <Box
+                                component="img"
+                                src={collection.thumbnail}
+                                alt={collection.name}
+                                sx={{ width: 60, height: 60, borderRadius: 1, objectFit: 'cover' }}
+                              />
+                              <Box sx={{ flexGrow: 1 }}>
+                                <Typography variant="h3" noWrap>{collection.name}</Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  {collection.itemCount} {collection.itemCount === 1 ? 'item' : 'items'}
+                                </Typography>
+                              </Box>
+                              <IconButton size="small">
+                                <OpenInNewIcon fontSize="small" />
+                              </IconButton>
+                            </Paper>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    )}
+                  </Box>
                   
                   {selectedAvatar.notes && (
                     <>

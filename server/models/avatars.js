@@ -1,4 +1,4 @@
-// server/models/avatars.js - Avatar model
+// server/models/avatars.js - Updated to include linked collections
 const db = require('../db/database');
 const { deleteImageFile } = require('../utils/imageUtils');
 
@@ -7,10 +7,15 @@ const { deleteImageFile } = require('../utils/imageUtils');
  * @returns {Promise<Array>} Array of avatar objects
  */
 async function getAllAvatars() {
-  return await db.all(`
-    SELECT * FROM avatars 
-    ORDER BY last_used DESC
+  // Modified to include collection counts
+  const avatars = await db.all(`
+    SELECT a.*, 
+    (SELECT COUNT(*) FROM avatar_collections WHERE avatar_id = a.id) as linked_collections_count
+    FROM avatars a
+    ORDER BY a.last_used DESC
   `);
+  
+  return avatars;
 }
 
 /**
@@ -19,10 +24,34 @@ async function getAllAvatars() {
  * @returns {Promise<Object>} Avatar object
  */
 async function getAvatarById(id) {
-  return await db.get(`
-    SELECT * FROM avatars 
-    WHERE id = ?
+  // Modified to include collection counts
+  const avatar = await db.get(`
+    SELECT a.*, 
+    (SELECT COUNT(*) FROM avatar_collections WHERE avatar_id = a.id) as linked_collections_count
+    FROM avatars a
+    WHERE a.id = ?
   `, [id]);
+  
+  return avatar;
+}
+
+/**
+ * Get collections linked to an avatar
+ * @param {number} avatarId - Avatar ID
+ * @returns {Promise<Array>} Array of collection objects
+ */
+async function getLinkedCollections(avatarId) {
+  const collections = await db.all(`
+    SELECT c.*, COUNT(ca.asset_id) as item_count
+    FROM collections c
+    JOIN avatar_collections ac ON c.id = ac.collection_id
+    LEFT JOIN collection_assets ca ON c.id = ca.collection_id
+    WHERE ac.avatar_id = ?
+    GROUP BY c.id
+    ORDER BY c.date_created DESC
+  `, [avatarId]);
+  
+  return collections;
 }
 
 /**
@@ -64,7 +93,8 @@ async function createAvatar(avatar) {
     filePath: filePath || '',
     notes,
     favorited: avatar.favorited || false,
-    isCurrent: isCurrent || false
+    isCurrent: isCurrent || false,
+    linkedCollectionsCount: 0
   };
 }
 
@@ -101,6 +131,11 @@ async function updateAvatar(id, avatar) {
   return result.changes > 0;
 }
 
+/**
+ * Toggle avatar current status
+ * @param {number} id - Avatar ID
+ * @returns {Promise<Object>} Result with success and current status
+ */
 async function toggleCurrentStatus(id) {
   // Get current status
   const avatar = await getAvatarById(id);
@@ -156,17 +191,30 @@ async function deleteAvatar(id) {
   const avatar = await getAvatarById(id);
   if (!avatar) return false;
   
-  const result = await db.run(`
-    DELETE FROM avatars 
-    WHERE id = ?
-  `, [id]);
+  // Start a transaction
+  await db.run('BEGIN TRANSACTION');
   
-  // If deletion was successful, delete the image file
-  if (result.changes > 0 && avatar.thumbnail) {
-    deleteImageFile(avatar.thumbnail);
+  try {
+    // Delete avatar collection links
+    await db.run('DELETE FROM avatar_collections WHERE avatar_id = ?', [id]);
+    
+    // Delete the avatar
+    const result = await db.run('DELETE FROM avatars WHERE id = ?', [id]);
+    
+    // Commit the transaction
+    await db.run('COMMIT');
+    
+    // If deletion was successful, delete the image file
+    if (result.changes > 0 && avatar.thumbnail) {
+      deleteImageFile(avatar.thumbnail);
+    }
+    
+    return result.changes > 0;
+  } catch (err) {
+    // Rollback on error
+    await db.run('ROLLBACK');
+    throw err;
   }
-  
-  return result.changes > 0;
 }
 
 /**
@@ -201,6 +249,7 @@ async function createAvatarBase(base) {
 module.exports = {
   getAllAvatars,
   getAvatarById,
+  getLinkedCollections,
   createAvatar,
   updateAvatar,
   toggleCurrentStatus,

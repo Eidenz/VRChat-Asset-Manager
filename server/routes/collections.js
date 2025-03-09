@@ -1,7 +1,8 @@
-// server/routes/collections.js - Collection routes
+// server/routes/collections.js - Updated with avatar linking routes
 const express = require('express');
 const router = express.Router();
 const collectionsModel = require('../models/collections');
+const avatarsModel = require('../models/avatars');
 const { body, param, validationResult } = require('express-validator');
 
 /**
@@ -14,14 +15,30 @@ router.get('/', async (req, res) => {
     const collections = await collectionsModel.getAllCollections();
     
     // Format to match frontend expectations
-    const formattedCollections = collections.map(collection => ({
-      id: collection.id,
-      name: collection.name,
-      description: collection.description,
-      thumbnail: collection.thumbnail,
-      dateCreated: collection.date_created,
-      folderPath: collection.folder_path,
-      itemCount: collection.item_count
+    const formattedCollections = await Promise.all(collections.map(async collection => {
+      let linkedAvatar = null;
+      
+      // If collection has a linked avatar, fetch its details
+      if (collection.linked_avatar_id) {
+        linkedAvatar = await avatarsModel.getAvatarById(collection.linked_avatar_id);
+      }
+      
+      return {
+        id: collection.id,
+        name: collection.name,
+        description: collection.description,
+        thumbnail: collection.thumbnail,
+        dateCreated: collection.date_created,
+        folderPath: collection.folder_path,
+        itemCount: collection.item_count,
+        linkedAvatarId: collection.linked_avatar_id,
+        linkedAvatar: linkedAvatar ? {
+          id: linkedAvatar.id,
+          name: linkedAvatar.name,
+          thumbnail: linkedAvatar.thumbnail,
+          base: linkedAvatar.base
+        } : null
+      };
     }));
     
     res.json({ success: true, data: formattedCollections });
@@ -51,6 +68,12 @@ router.get('/:id',
         return res.status(404).json({ success: false, message: 'Collection not found' });
       }
       
+      // Get linked avatar if there is one
+      let linkedAvatar = null;
+      if (collection.linked_avatar_id) {
+        linkedAvatar = await avatarsModel.getAvatarById(collection.linked_avatar_id);
+      }
+      
       // Format to match frontend expectations
       const formattedCollection = {
         id: collection.id,
@@ -59,7 +82,14 @@ router.get('/:id',
         thumbnail: collection.thumbnail,
         dateCreated: collection.date_created,
         folderPath: collection.folder_path,
-        itemCount: collection.item_count
+        itemCount: collection.item_count,
+        linkedAvatarId: collection.linked_avatar_id,
+        linkedAvatar: linkedAvatar ? {
+          id: linkedAvatar.id,
+          name: linkedAvatar.name,
+          thumbnail: linkedAvatar.thumbnail,
+          base: linkedAvatar.base
+        } : null
       };
       
       res.json({ success: true, data: formattedCollection });
@@ -122,6 +152,42 @@ router.get('/:id/assets',
 );
 
 /**
+ * @route   GET /api/collections/avatar/:avatarId
+ * @desc    Get collections linked to an avatar
+ * @access  Public
+ */
+router.get('/avatar/:avatarId',
+  param('avatarId').isInt().withMessage('Avatar ID must be an integer'),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    
+    try {
+      const collections = await collectionsModel.getAvatarCollections(req.params.avatarId);
+      
+      // Format to match frontend expectations
+      const formattedCollections = collections.map(collection => ({
+        id: collection.id,
+        name: collection.name,
+        description: collection.description,
+        thumbnail: collection.thumbnail,
+        dateCreated: collection.date_created,
+        folderPath: collection.folder_path,
+        itemCount: collection.item_count,
+        linkedAvatarId: parseInt(req.params.avatarId)
+      }));
+      
+      res.json({ success: true, data: formattedCollections });
+    } catch (err) {
+      console.error('Error getting avatar collections:', err.message);
+      res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+);
+
+/**
  * @route   POST /api/collections
  * @desc    Create a new collection
  * @access  Public
@@ -129,7 +195,8 @@ router.get('/:id/assets',
 router.post('/',
   [
     body('name').notEmpty().withMessage('Name is required'),
-    body('thumbnail').notEmpty().withMessage('Thumbnail is required')
+    body('thumbnail').notEmpty().withMessage('Thumbnail is required'),
+    body('avatarId').optional().isInt().withMessage('Avatar ID must be an integer if provided')
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -139,7 +206,24 @@ router.post('/',
     
     try {
       const collection = await collectionsModel.createCollection(req.body);
-      res.status(201).json({ success: true, data: collection });
+      
+      // If collection was created with an avatar link, include that in the response
+      let linkedAvatar = null;
+      if (collection.linkedAvatarId) {
+        linkedAvatar = await avatarsModel.getAvatarById(collection.linkedAvatarId);
+      }
+      
+      const responseData = {
+        ...collection,
+        linkedAvatar: linkedAvatar ? {
+          id: linkedAvatar.id,
+          name: linkedAvatar.name,
+          thumbnail: linkedAvatar.thumbnail,
+          base: linkedAvatar.base
+        } : null
+      };
+      
+      res.status(201).json({ success: true, data: responseData });
     } catch (err) {
       console.error('Error creating collection:', err.message);
       res.status(500).json({ success: false, message: 'Server error' });
@@ -155,7 +239,8 @@ router.post('/',
 router.put('/:id',
   [
     param('id').isInt().withMessage('Collection ID must be an integer'),
-    body('name').notEmpty().withMessage('Name is required')
+    body('name').notEmpty().withMessage('Name is required'),
+    body('avatarId').optional({ nullable: true }).isInt().withMessage('Avatar ID must be an integer if provided')
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -173,6 +258,12 @@ router.put('/:id',
       // Get the updated collection
       const updatedCollection = await collectionsModel.getCollectionById(req.params.id);
       
+      // Get linked avatar if there is one
+      let linkedAvatar = null;
+      if (updatedCollection.linked_avatar_id) {
+        linkedAvatar = await avatarsModel.getAvatarById(updatedCollection.linked_avatar_id);
+      }
+      
       // Format to match frontend expectations
       const formattedCollection = {
         id: updatedCollection.id,
@@ -181,7 +272,14 @@ router.put('/:id',
         thumbnail: updatedCollection.thumbnail,
         dateCreated: updatedCollection.date_created,
         folderPath: updatedCollection.folder_path,
-        itemCount: updatedCollection.item_count
+        itemCount: updatedCollection.item_count,
+        linkedAvatarId: updatedCollection.linked_avatar_id,
+        linkedAvatar: linkedAvatar ? {
+          id: linkedAvatar.id,
+          name: linkedAvatar.name,
+          thumbnail: linkedAvatar.thumbnail,
+          base: linkedAvatar.base
+        } : null
       };
       
       res.json({ success: true, data: formattedCollection });
@@ -215,6 +313,68 @@ router.delete('/:id',
       res.json({ success: true, message: 'Collection deleted' });
     } catch (err) {
       console.error('Error deleting collection:', err.message);
+      res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+);
+
+/**
+ * @route   POST /api/collections/:id/link/:avatarId
+ * @desc    Link a collection to an avatar
+ * @access  Public
+ */
+router.post('/:id/link/:avatarId',
+  [
+    param('id').isInt().withMessage('Collection ID must be an integer'),
+    param('avatarId').isInt().withMessage('Avatar ID must be an integer')
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    
+    try {
+      const success = await collectionsModel.linkToAvatar(req.params.id, req.params.avatarId);
+      
+      if (!success) {
+        return res.status(404).json({ success: false, message: 'Collection or avatar not found' });
+      }
+      
+      res.json({ success: true, message: 'Collection linked to avatar' });
+    } catch (err) {
+      console.error('Error linking collection to avatar:', err.message);
+      res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+);
+
+/**
+ * @route   DELETE /api/collections/:id/link/:avatarId
+ * @desc    Unlink a collection from an avatar
+ * @access  Public
+ */
+router.delete('/:id/link/:avatarId',
+  [
+    param('id').isInt().withMessage('Collection ID must be an integer'),
+    param('avatarId').isInt().withMessage('Avatar ID must be an integer')
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    
+    try {
+      const success = await collectionsModel.unlinkFromAvatar(req.params.id, req.params.avatarId);
+      
+      if (!success) {
+        return res.status(404).json({ success: false, message: 'Collection or avatar not found or not linked' });
+      }
+      
+      res.json({ success: true, message: 'Collection unlinked from avatar' });
+    } catch (err) {
+      console.error('Error unlinking collection from avatar:', err.message);
       res.status(500).json({ success: false, message: 'Server error' });
     }
   }

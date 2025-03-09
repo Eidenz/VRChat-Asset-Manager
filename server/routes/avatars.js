@@ -1,4 +1,4 @@
-// server/routes/avatars.js - Avatar routes
+// server/routes/avatars.js - Updated to include linked collections
 const express = require('express');
 const router = express.Router();
 const avatarsModel = require('../models/avatars');
@@ -25,7 +25,8 @@ router.get('/', async (req, res) => {
       filePath: avatar.file_path,
       notes: avatar.notes,
       favorited: avatar.favorited === 1,
-      isCurrent: avatar.is_current === 1  // Add this line
+      isCurrent: avatar.is_current === 1,
+      linkedCollectionsCount: avatar.linked_collections_count || 0
     }));
     
     res.json({ success: true, data: formattedAvatars });
@@ -66,12 +67,50 @@ router.get('/:id',
         lastUsed: avatar.last_used,
         filePath: avatar.file_path,
         notes: avatar.notes,
-        favorited: avatar.favorited === 1
+        favorited: avatar.favorited === 1,
+        isCurrent: avatar.is_current === 1,
+        linkedCollectionsCount: avatar.linked_collections_count || 0
       };
       
       res.json({ success: true, data: formattedAvatar });
     } catch (err) {
       console.error('Error getting avatar:', err.message);
+      res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+);
+
+/**
+ * @route   GET /api/avatars/:id/collections
+ * @desc    Get collections linked to an avatar
+ * @access  Public
+ */
+router.get('/:id/collections', 
+  param('id').isInt().withMessage('Avatar ID must be an integer'),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    
+    try {
+      const collections = await avatarsModel.getLinkedCollections(req.params.id);
+      
+      // Format collections to match frontend expectations
+      const formattedCollections = collections.map(collection => ({
+        id: collection.id,
+        name: collection.name,
+        description: collection.description,
+        thumbnail: collection.thumbnail,
+        dateCreated: collection.date_created,
+        folderPath: collection.folder_path,
+        itemCount: collection.item_count,
+        linkedAvatarId: parseInt(req.params.id)
+      }));
+      
+      res.json({ success: true, data: formattedCollections });
+    } catch (err) {
+      console.error('Error getting linked collections:', err.message);
       res.status(500).json({ success: false, message: 'Server error' });
     }
   }
@@ -142,7 +181,9 @@ router.put('/:id',
         lastUsed: updatedAvatar.last_used,
         filePath: updatedAvatar.file_path,
         notes: updatedAvatar.notes,
-        favorited: updatedAvatar.favorited === 1
+        favorited: updatedAvatar.favorited === 1,
+        isCurrent: updatedAvatar.is_current === 1,
+        linkedCollectionsCount: updatedAvatar.linked_collections_count || 0
       };
       
       res.json({ success: true, data: formattedAvatar });

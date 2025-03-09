@@ -1,4 +1,4 @@
-// client/src/context/ApiContext.js - Context provider for API data
+// client/src/context/ApiContext.js - Updated with avatar-collection linking
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { avatarsAPI, assetsAPI, collectionsAPI, settingsAPI } from '../services/api';
 
@@ -144,6 +144,17 @@ export const ApiProvider = ({ children }) => {
       setLoading(prev => ({ ...prev, settings: false }));
     }
   }, []);
+
+  // Fetch collections for an avatar
+  const fetchAvatarCollections = async (avatarId) => {
+    try {
+      const response = await avatarsAPI.getCollections(avatarId);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching collections for avatar ${avatarId}:`, error);
+      throw error;
+    }
+  };
 
   // Function to get collection assets
   const fetchCollectionAssets = async (collectionId) => {
@@ -297,6 +308,80 @@ export const ApiProvider = ({ children }) => {
     }
   };
 
+  // Function to link a collection to an avatar
+  const linkCollectionToAvatar = async (collectionId, avatarId) => {
+    try {
+      await collectionsAPI.linkToAvatar(collectionId, avatarId);
+      
+      // Update collections state to reflect the link
+      setCollections(prev => 
+        prev.map(collection => 
+          collection.id === collectionId 
+            ? { 
+                ...collection, 
+                linkedAvatarId: avatarId,
+                linkedAvatar: avatars.find(a => a.id === avatarId)
+              } 
+            : collection
+        )
+      );
+      
+      // Also update avatar's linkedCollectionsCount
+      setAvatars(prev =>
+        prev.map(avatar =>
+          avatar.id === avatarId
+            ? { 
+                ...avatar, 
+                linkedCollectionsCount: (avatar.linkedCollectionsCount || 0) + 1 
+              }
+            : avatar
+        )
+      );
+      
+      return true;
+    } catch (error) {
+      console.error(`Error linking collection ${collectionId} to avatar ${avatarId}:`, error);
+      throw error;
+    }
+  };
+
+  // Function to unlink a collection from an avatar
+  const unlinkCollectionFromAvatar = async (collectionId, avatarId) => {
+    try {
+      await collectionsAPI.unlinkFromAvatar(collectionId, avatarId);
+      
+      // Update collections state to reflect the unlink
+      setCollections(prev => 
+        prev.map(collection => 
+          collection.id === collectionId 
+            ? { 
+                ...collection, 
+                linkedAvatarId: null,
+                linkedAvatar: null
+              } 
+            : collection
+        )
+      );
+      
+      // Also update avatar's linkedCollectionsCount
+      setAvatars(prev =>
+        prev.map(avatar =>
+          avatar.id === avatarId
+            ? { 
+                ...avatar, 
+                linkedCollectionsCount: Math.max(0, (avatar.linkedCollectionsCount || 0) - 1)
+              }
+            : avatar
+        )
+      );
+      
+      return true;
+    } catch (error) {
+      console.error(`Error unlinking collection ${collectionId} from avatar ${avatarId}:`, error);
+      throw error;
+    }
+  };
+
   // Function to update settings
   const updateSettings = async (newSettings) => {
     try {
@@ -365,6 +450,7 @@ export const ApiProvider = ({ children }) => {
     fetchCollections,
     fetchSettings,
     fetchCollectionAssets,
+    fetchAvatarCollections,
     
     // Action functions
     toggleAssetFavorite,
@@ -375,6 +461,8 @@ export const ApiProvider = ({ children }) => {
     createCollection,
     updateSettings,
     deleteAsset,
+    linkCollectionToAvatar,
+    unlinkCollectionFromAvatar,
     
     // API services
     avatarsAPI,
