@@ -116,7 +116,7 @@ const assetTypes = [
   { id: 'accessory', name: 'Accessory' },
   { id: 'texture', name: 'Texture' },
   { id: 'animation', name: 'Animation' },
-  { id: 'avatar', name: 'Full Avatar' },
+  { id: 'avatar', name: 'Body Part' },
   { id: 'shader', name: 'Shader' },
   { id: 'audio', name: 'Audio' },
   { id: 'prefab', name: 'Prefab' },
