@@ -92,7 +92,8 @@ db.serialize(() => {
     notes TEXT,
     owned_variant TEXT,
     price TEXT,
-    currency TEXT DEFAULT 'USD'
+    currency TEXT DEFAULT 'USD',
+    nsfw INTEGER DEFAULT 0
   )`);
   
   db.run(`CREATE TABLE asset_tags (
@@ -127,6 +128,7 @@ db.serialize(() => {
   db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['darkMode', '1']);
   db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['showFilePaths', '1']);
   db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['currency_preference', 'USD']);
+  db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['blur_nsfw', '1']);
   
   // Insert default asset types
   const defaultTypes = [
