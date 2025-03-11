@@ -931,14 +931,14 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
               indicatorColor="primary"
               aria-label="asset details tabs"
             >
-              {(hasCompatibility || editMode) && <Tab label="Compatibility" />}
+              {<Tab label="Compatibility" disabled={!hasCompatibility} />}
               {(hasDescription || editMode) && <Tab label="Description" />}
               {(hasTags || editMode) && <Tab label="Tags" />}
             </Tabs>
             <Divider />
             
           <Box sx={{ p: 2 }}>
-              {tabValue === 0 && (hasCompatibility || editMode) && (
+              {tabValue === 0 && (hasCompatibility) && (
                 <Box>
                   <Typography variant="h3" sx={{ mb: 2 }}>Compatibility Information</Typography>
                   
