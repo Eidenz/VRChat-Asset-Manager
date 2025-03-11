@@ -89,7 +89,7 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   
-  const { toggleAssetFavorite, assetsAPI, updateAssetLastUsed, assets, deleteAsset, preferredCurrency } = useApi();
+  const { toggleAssetFavorite, updateAssetDetails, updateAssetLastUsed, assets, deleteAsset, preferredCurrency } = useApi();
 
   // Use localAsset to ensure we always show the latest data
   useEffect(() => {
@@ -176,17 +176,17 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
   const handleSaveNotes = async () => {
     setSaving(true);
     try {
-      // Save the notes
-      await assetsAPI.update(localAsset.id, { 
+      // Create an updated asset object with all properties
+      const updatedAsset = {
         ...localAsset,
         notes
-      });
+      };
       
-      // Update local asset copy
-      setLocalAsset({
-        ...localAsset,
-        notes
-      });
+      // Use the new updateAssetDetails function from context
+      await updateAssetDetails(localAsset.id, updatedAsset);
+      
+      // Update local state
+      setLocalAsset(updatedAsset);
       
       setIsEditingNotes(false);
     } catch (error) {
@@ -207,7 +207,7 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
           formattedPrice = `${getCurrencyInfo(fileInfo.currency).symbol}${numericValue}`;
         }
       }
-
+  
       // Create an updated asset object with ALL properties from localAsset
       // plus our updated properties
       const updatedAsset = {
@@ -219,24 +219,19 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
         currency: fileInfo.currency
       };
       
-      // Save the file info to API
-      const response = await assetsAPI.update(localAsset.id, updatedAsset);
+      // Use the new updateAssetDetails function from context instead of direct API call
+      await updateAssetDetails(localAsset.id, updatedAsset);
       
-      // Refresh assets to ensure we get the updated data from the server
-      await assetsAPI.getById(localAsset.id).then(updatedResponse => {
-        if (updatedResponse && updatedResponse.data) {
-          // Update the local asset with the fresh data from the server
-          setLocalAsset(updatedResponse.data);
-          
-          // Also update the form state to match the server data
-          setFileInfo({
-            version: updatedResponse.data.version || '',
-            filePath: updatedResponse.data.filePath || '',
-            downloadUrl: updatedResponse.data.downloadUrl || '',
-            price: updatedResponse.data.price || '',
-            currency: updatedResponse.data.currency || 'USD'
-          });
-        }
+      // Update local state to reflect changes
+      setLocalAsset(updatedAsset);
+      
+      // Apply the changes to the form state too
+      setFileInfo({
+        version: updatedAsset.version || '',
+        filePath: updatedAsset.filePath || '',
+        downloadUrl: updatedAsset.downloadUrl || '',
+        price: updatedAsset.price || '',
+        currency: updatedAsset.currency || 'USD'
       });
       
       // Exit edit mode

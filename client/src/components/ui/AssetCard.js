@@ -122,7 +122,7 @@ const AssetCard = ({ asset: propAsset }) => {
   useEffect(() => {
     if (asset && assets.all) {
       const updatedAsset = assets.all.find(a => a.id === asset.id);
-      if (updatedAsset) {
+      if (updatedAsset && JSON.stringify(updatedAsset) !== JSON.stringify(asset)) {
         setAsset(updatedAsset);
       }
     }

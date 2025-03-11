@@ -431,6 +431,47 @@ export const ApiProvider = ({ children }) => {
     }
   };
 
+  const updateAssetDetails = async (assetId, updatedData) => {
+    try {
+      // Call API to update the asset
+      const response = await assetsAPI.update(assetId, updatedData);
+      
+      // Create updated asset object with the new data
+      const updatedAsset = {
+        ...updatedData,
+        id: assetId
+      };
+      
+      // Update all asset state arrays that might contain this asset
+      setAssets(prev => {
+        // Helper function to update asset in an array
+        const updateAssetInArray = (array) => {
+          if (!array) return array;
+          return array.map(asset => 
+            asset.id === assetId ? { ...asset, ...updatedData } : asset
+          );
+        };
+        
+        return {
+          ...prev,
+          all: updateAssetInArray(prev.all),
+          clothing: updateAssetInArray(prev.clothing),
+          props: updateAssetInArray(prev.props),
+          accessories: updateAssetInArray(prev.accessories),
+          textures: updateAssetInArray(prev.textures),
+          animations: updateAssetInArray(prev.animations),
+          favorites: updateAssetInArray(prev.favorites),
+          recent: updateAssetInArray(prev.recent)
+        };
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating asset ${assetId}:`, error);
+      throw error;
+    }
+  };
+
   // Load all data on initial mount
   useEffect(() => {
     fetchAvatars();
@@ -470,6 +511,7 @@ export const ApiProvider = ({ children }) => {
     deleteAsset,
     linkCollectionToAvatar,
     unlinkCollectionFromAvatar,
+    updateAssetDetails,
     
     // API services
     avatarsAPI,
