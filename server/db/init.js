@@ -136,7 +136,12 @@ db.serialize(() => {
     { id: 'prop', name: 'Prop' },
     { id: 'accessory', name: 'Accessory' },
     { id: 'texture', name: 'Texture' },
-    { id: 'animation', name: 'Animation' }
+    { id: 'animation', name: 'Animation' },
+    { id: 'body_part', name: 'Body Part' },
+    { id: 'shader', name: 'Shader' },
+    { id: 'audio', name: 'Audio' },
+    { id: 'prefab', name: 'Prefab' },
+    { id: 'script_component', name: 'Script/Component' }
   ];
   
   defaultTypes.forEach(type => {

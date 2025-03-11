@@ -609,7 +609,17 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
                   {loadingTypes ? (
                     <MenuItem disabled>Loading types...</MenuItem>
                   ) : (
-                    availableTypes.map(type => (
+                    [{id:'clothing',name:'Clothing'},
+                      {id:'prop',name:'Prop'},
+                      {id:'accessory',name:'Accessory'},
+                      {id:'texture',name:'Texture'},
+                      {id:'animation',name:'Animation'},
+                      {id:'body_part',name:'Body Part'},
+                      {id:'shader',name:'Shader'},
+                      {id:'audio',name:'Audio'},
+                      {id:'prefab',name:'Prefab'},
+                      {id:'script_component',name:'Script/Component'}
+                    ].map(type => (
                       <MenuItem key={type.id} value={type.name}>
                         {type.name}
                       </MenuItem>
