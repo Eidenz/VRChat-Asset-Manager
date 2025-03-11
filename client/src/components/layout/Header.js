@@ -117,7 +117,7 @@ const Header = () => {
             <SearchIcon />
           </SearchIconWrapper>
           <StyledInputBase
-            placeholder="Search assets, creators, collections..."
+            placeholder="Search assets, creators, collections... (soon)"
             inputProps={{ 'aria-label': 'search' }}
             value={searchQuery}
             onChange={handleSearchChange}
@@ -127,6 +127,7 @@ const Header = () => {
                 setSearchModalOpen(true);
               }
             }}
+            disabled
           />
         </Search>
         

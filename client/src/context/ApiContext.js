@@ -37,6 +37,8 @@ export const ApiProvider = ({ children }) => {
     settings: null
   });
 
+  const [preferredCurrency, setPreferredCurrency] = useState('USD');
+
   // Fetch all avatars
   const fetchAvatars = useCallback(async () => {
     setLoading(prev => ({ ...prev, avatars: true }));
@@ -137,13 +139,18 @@ export const ApiProvider = ({ children }) => {
     try {
       const response = await settingsAPI.getAll();
       setSettings(response.data);
+      
+      // Set preferred currency from settings
+      if (response.data.currency_preference) {
+        setPreferredCurrency(response.data.currency_preference);
+      }
     } catch (error) {
       console.error('Error fetching settings:', error);
       setErrors(prev => ({ ...prev, settings: error.message || 'Failed to fetch settings' }));
     } finally {
       setLoading(prev => ({ ...prev, settings: false }));
     }
-  }, []);
+  }, [settingsAPI]);
 
   // Fetch collections for an avatar
   const fetchAvatarCollections = async (avatarId) => {
@@ -468,7 +475,8 @@ export const ApiProvider = ({ children }) => {
     avatarsAPI,
     assetsAPI,
     collectionsAPI,
-    settingsAPI
+    settingsAPI,
+    preferredCurrency
   };
 
   return <ApiContext.Provider value={value}>{children}</ApiContext.Provider>;

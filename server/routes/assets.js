@@ -39,7 +39,9 @@ const formatAsset = (asset) => {
     notes: asset.notes,
     tags: asset.tags || [],
     compatibleWith: asset.compatibleWith || [],
-    ownedVariant: ownedVariant
+    ownedVariant: ownedVariant,
+    price: asset.price || null,  // Include price in the formatted asset
+    currency: asset.currency || 'USD'  // Include currency, default to USD if not specified
   };
 };
 

@@ -12,6 +12,7 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import LayersIcon from '@mui/icons-material/Layers';
 import SettingsIcon from '@mui/icons-material/Settings';
 import WidgetsIcon from '@mui/icons-material/Widgets';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 
 // Custom styled NavLink component
 const StyledNavLink = styled(NavLink)(({ theme }) => ({
@@ -71,10 +72,10 @@ const Sidebar = () => {
         </Box>
         <Typography variant="h1">VRChat Asset Hub</Typography>
       </Box>
-      
+
       {/* Main Navigation */}
       <Box sx={{ mb: 3 }}>
-        <SectionTitle>Main</SectionTitle>
+        <SectionTitle>Home</SectionTitle>
         <List disablePadding>
           <ListItem disablePadding>
             <StyledNavLink to="/" end>
@@ -82,6 +83,19 @@ const Sidebar = () => {
               <ListItemText primary="Dashboard" />
             </StyledNavLink>
           </ListItem>
+          <ListItem disablePadding>
+            <StyledNavLink to="/expenses" end>
+              <ListItemIcon sx={{ minWidth: 36 }}><AttachMoneyIcon /></ListItemIcon>
+              <ListItemText primary="Expenses" />
+            </StyledNavLink>
+          </ListItem>
+        </List>
+      </Box>
+      
+      {/* Assets Navigation */}
+      <Box sx={{ mb: 3 }}>
+        <SectionTitle>Assets</SectionTitle>
+        <List disablePadding>
           <ListItem disablePadding>
             <StyledNavLink to="/clothing">
               <ListItemIcon sx={{ minWidth: 36 }}><CheckroomIcon /></ListItemIcon>

@@ -26,6 +26,7 @@ import {
   Paper,
   Dialog,
   ListItemText,
+  InputAdornment
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
@@ -36,6 +37,7 @@ import ImageIcon from '@mui/icons-material/Image';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { Divider } from '@mui/material';
+import { SUPPORTED_CURRENCIES, formatCurrencyInput, getCurrencyInfo } from '../../utils/currencyUtils';
 
 // Import API context and upload service
 import { useApi } from '../../context/ApiContext';
@@ -116,8 +118,10 @@ const AssetUploader = ({ onClose }) => {
     type: '',
     tags: [],
     compatibleWith: [],
-    ownedVariant: '', // New field to track which variant the user owns
+    ownedVariant: '', 
     notes: '',
+    price: '',
+    currency: ''
   });
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -134,7 +138,7 @@ const AssetUploader = ({ onClose }) => {
   const [ownedVariant, setOwnedVariant] = useState(''); // New state for owned variant
   
   // Get data and functions from API context
-  const { assetsAPI, avatarsAPI, fetchAssets } = useApi();
+  const { assetsAPI, avatarsAPI, fetchAssets, preferredCurrency } = useApi();
   
   // State for data loaded from API
   const [assetTypes, setAssetTypes] = useState([]);
@@ -142,6 +146,13 @@ const AssetUploader = ({ onClose }) => {
   const [customAvatarBases, setCustomAvatarBases] = useState([]);
   const [assetTags, setAssetTags] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
+
+  useEffect(() => {
+    setAssetData(prev => ({
+      ...prev,
+      currency: preferredCurrency || 'USD'
+    }));
+  }, [preferredCurrency]);
 
   // Load asset types, avatar bases, and tags on component mount
   useEffect(() => {
@@ -198,6 +209,55 @@ const AssetUploader = ({ onClose }) => {
     
     fetchOptions();
   }, [assetsAPI, avatarsAPI]);
+
+  const formatCurrency = (value) => {
+    // Remove any non-digit or non-decimal characters
+    const numericValue = value.replace(/[^\d.]/g, '');
+    
+    // Ensure we're not adding multiple decimal points
+    const parts = numericValue.split('.');
+    if (parts.length > 2) {
+      return parts[0] + '.' + parts.slice(1).join('');
+    }
+    
+    // Format with $ prefix
+    if (numericValue === '') {
+      return '';
+    }
+    
+    return '$' + numericValue;
+  };
+
+  const handlePriceChange = (e) => {
+    const rawValue = e.target.value;
+    // Format the price to currency format using the selected currency
+    const formattedPrice = formatCurrencyInput(rawValue, assetData.currency);
+    
+    setAssetData(prev => ({
+      ...prev,
+      price: formattedPrice
+    }));
+  };
+
+  const handleCurrencyChange = (e) => {
+    const newCurrency = e.target.value;
+    
+    // If there's a price value, reformat it for the new currency
+    let updatedPrice = assetData.price;
+    if (updatedPrice) {
+      // Extract the numeric value
+      const numericValue = updatedPrice.replace(/[^\d.]/g, '');
+      // Format with the new currency symbol
+      const currencyInfo = getCurrencyInfo(newCurrency);
+      updatedPrice = `${currencyInfo.symbol}${numericValue}`;
+    }
+    
+    setAssetData(prev => ({
+      ...prev,
+      currency: newCurrency,
+      price: updatedPrice
+    }));
+  };
 
   const handleNext = () => {
     setActiveStep((prevStep) => prevStep + 1);
@@ -627,6 +687,35 @@ const AssetUploader = ({ onClose }) => {
                       </Select>
                     </FormControl>
                   </Grid>
+
+                  <Grid item xs={12} sm={8}>
+                      <TextField
+                        fullWidth
+                        label="Price"
+                        name="price"
+                        value={assetData.price}
+                        onChange={handlePriceChange}
+                        placeholder={`${getCurrencyInfo(assetData.currency).symbol}0.00`}
+                        helperText="Enter how much you paid for this asset (optional)"
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <FormControl fullWidth>
+                        <InputLabel>Currency</InputLabel>
+                        <Select
+                          name="currency"
+                          value={assetData.currency || 'USD'}
+                          onChange={handleCurrencyChange}
+                          label="Currency"
+                        >
+                          {SUPPORTED_CURRENCIES.map((currency) => (
+                            <MenuItem key={currency.code} value={currency.code}>
+                              {currency.code} ({currency.symbol})
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
                   
                   <Grid item xs={12}>
                     <TextField
@@ -657,7 +746,7 @@ const AssetUploader = ({ onClose }) => {
                       rows={4}
                     />
                   </Grid>
-                  
+
                   <Grid item xs={12}>
                     <FormControl fullWidth>
                       <InputLabel>Tags</InputLabel>
@@ -892,6 +981,21 @@ const AssetUploader = ({ onClose }) => {
                         <Typography variant="body2" color="text.secondary">Type</Typography>
                         <Typography variant="body1">{assetData.type || 'Not specified'}</Typography>
                       </Box>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="body2" color="text.secondary">Price</Typography>
+                          <Typography 
+                            variant="body1" 
+                            sx={{ 
+                              fontWeight: assetData.price ? 'bold' : 'normal',
+                              color: assetData.price ? 'primary.main' : 'text.secondary',
+                              fontStyle: assetData.price ? 'normal' : 'italic'
+                            }}
+                          >
+                            {assetData.price ? `${assetData.price} (${assetData.currency})` : 'Not specified'}
+                          </Typography>
+                        </Box>
+                      </Grid>
                     </Grid>
                     
                     <Grid item xs={12} md={6}>

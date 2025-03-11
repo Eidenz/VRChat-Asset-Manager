@@ -20,6 +20,7 @@ import Collections from './pages/Collections';
 import CollectionDetail from './pages/CollectionDetail';
 import Settings from './pages/Settings';
 import Others from './pages/Others';
+import AssetStatistics from './components/features/AssetStatistics';
 
 function App() {
   return (
@@ -39,6 +40,7 @@ function App() {
               <Route path="collections" element={<Collections />} />
               <Route path="collections/:id" element={<CollectionDetail />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="expenses" element={<AssetStatistics />} />
             </Route>
           </Routes>
         </BrowserRouter>

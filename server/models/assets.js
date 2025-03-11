@@ -186,7 +186,7 @@ async function createAsset(asset) {
   const { 
     name, creator, description, fileSize, filePath, 
     downloadUrl, version, type, notes, tags = [], 
-    compatibleWith = [], ownedVariant, // Now this can be an array
+    compatibleWith = [], ownedVariant, price, currency, // Add currency to the destructured parameters
     serverUploadedImage
   } = asset;
   
@@ -217,18 +217,18 @@ async function createAsset(asset) {
   await db.run('BEGIN TRANSACTION');
   
   try {
-    // Insert the asset
+    // Insert the asset with price and currency included
     const result = await db.run(`
       INSERT INTO assets (
         name, creator, description, thumbnail, date_added, last_used, 
         file_size, file_path, download_url, version, type, favorited, notes,
-        owned_variant
+        owned_variant, price, currency
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       name, creator, description, thumbnail, dateAdded, lastUsed,
       fileSize, filePath, downloadUrl, version, type, favorited, notes,
-      storedOwnedVariant
+      storedOwnedVariant, price, currency || 'USD'
     ]);
     
     const assetId = result.lastID;
@@ -284,7 +284,9 @@ async function createAsset(asset) {
       notes,
       tags,
       compatibleWith,
-      ownedVariant: returnOwnedVariant
+      ownedVariant: returnOwnedVariant,
+      price, // Include price in the returned asset
+      currency: currency || 'USD' // Include currency in the returned asset
     };
     
   } catch (err) {
@@ -304,7 +306,7 @@ async function updateAsset(id, asset) {
   const { 
     name, creator, description, thumbnail, fileSize, filePath, 
     downloadUrl, version, type, notes, tags, compatibleWith,
-    ownedVariant  // Add ownedVariant
+    ownedVariant, price, currency  // Add currency to the destructured parameters
   } = asset;
   
   // Ensure favorited is properly converted to 0/1 for database
@@ -314,7 +316,7 @@ async function updateAsset(id, asset) {
   await db.run('BEGIN TRANSACTION');
   
   try {
-    // Update the asset
+    // Update the asset including currency
     const result = await db.run(`
       UPDATE assets 
       SET name = ?, 
@@ -328,7 +330,9 @@ async function updateAsset(id, asset) {
           type = ?,
           notes = ?,
           favorited = ?,
-          owned_variant = ?  /* Add owned_variant to SET clause */
+          owned_variant = ?,
+          price = ?,
+          currency = ?
       WHERE id = ?
     `, [
       name, 
@@ -343,6 +347,8 @@ async function updateAsset(id, asset) {
       notes, 
       favorited,
       ownedVariant || null,
+      price || null,
+      currency || 'USD',
       id
     ]);
     

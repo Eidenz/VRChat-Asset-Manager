@@ -14,6 +14,11 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import FolderIcon from '@mui/icons-material/Folder';
@@ -22,6 +27,7 @@ import RestoreIcon from '@mui/icons-material/Restore';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '../context/ThemeContext';
+import { SUPPORTED_CURRENCIES } from '../utils/currencyUtils';
 
 // Import API context
 import { useApi } from '../context/ApiContext';
@@ -250,6 +256,28 @@ const Settings = () => {
                   } 
                   label="Auto Sync" 
                 />
+              </Box>
+              <Typography variant="h3" sx={{ mb: 2, mt: 3 }}>Currency Settings</Typography>
+              <Box sx={{ mb: 3 }}>
+                <FormControl fullWidth>
+                  <InputLabel id="currency-select-label">Preferred Currency</InputLabel>
+                  <Select
+                    labelId="currency-select-label"
+                    id="currency-select"
+                    value={formSettings.currency_preference || 'USD'}
+                    onChange={(e) => handleSettingChange('currency_preference', e.target.value)}
+                    label="Preferred Currency"
+                  >
+                    {SUPPORTED_CURRENCIES.map((currency) => (
+                      <MenuItem key={currency.code} value={currency.code}>
+                        {currency.symbol} - {currency.name} ({currency.code})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>
+                    This will be used as the default currency for all asset prices
+                  </FormHelperText>
+                </FormControl>
               </Box>
             </Paper>
           </motion.div>

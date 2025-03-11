@@ -1,10 +1,11 @@
-// server/server.js - Updated with uploads routes
+// Updated server.js file to include migrations
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const { close } = require('./db/database');
+const { runMigrations } = require('./db/migrations');
 
 // Import routes
 const avatarsRoutes = require('./routes/avatars');
@@ -16,6 +17,11 @@ const uploadsRoutes = require('./routes/uploads');
 // Create Express app
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Run database migrations
+runMigrations().catch(err => {
+  console.error('Failed to run migrations:', err);
+});
 
 // Apply middlewares
 app.use(helmet({

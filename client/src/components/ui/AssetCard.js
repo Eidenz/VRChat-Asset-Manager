@@ -20,6 +20,8 @@ import EditNoteIcon from '@mui/icons-material/EditNote';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { motion } from 'framer-motion';
 import AssetDetailsModal from './AssetDetailsModal';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import { formatCurrency } from '../../utils/currencyUtils';
 
 // Import API context
 import { useApi } from '../../context/ApiContext';
@@ -195,6 +197,21 @@ const AssetCard = ({ asset: propAsset }) => {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
             By: {asset.creator}
           </Typography>
+
+          {asset.price ? (
+              <InfoRow>
+                <Typography variant="body2" sx={{ fontWeight: 'medium', color: 'primary.main' }}>
+                  {`${asset.price} ${asset.currency ? `(${asset.currency})` : ''}`}
+                </Typography>
+              </InfoRow>
+            )
+          : (
+            <InfoRow>
+              <Typography variant="body2" sx={{ fontWeight: 'medium', color: 'primary.main' }}>
+                {`-`}
+              </Typography>
+            </InfoRow>
+          )}
           
           <TagsContainer>
             {asset.tags && asset.tags.slice(0, 3).map((tag, index) => (

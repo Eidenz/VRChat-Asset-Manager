@@ -36,6 +36,7 @@ import LinkIcon from '@mui/icons-material/Link';
 import { styled } from '@mui/material/styles';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VerifiedIcon from '@mui/icons-material/Verified';
+import { formatCurrency } from '../../utils/currencyUtils';
 
 // Import API context
 import { useApi } from '../../context/ApiContext';
@@ -52,7 +53,6 @@ const StyledChip = styled(Chip)(({ theme }) => ({
 
 const InfoItem = styled(Box)(({ theme }) => ({
   marginBottom: theme.spacing(3),
-  height: 70, // Set a fixed height for info items
   overflow: 'hidden'
 }));
 
@@ -349,6 +349,21 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
                       )}
                     </Typography>
                   </Tooltip>
+                </Box>
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2">Price:</Typography>
+                  <Typography 
+                    variant="body2" 
+                    sx={{ 
+                      fontWeight: 'bold', 
+                      color: localAsset.price ? 'primary.main' : 'text.secondary'
+                    }}
+                  >
+                    {localAsset.price ? 
+                      `${localAsset.price} (${localAsset.currency || 'USD'})` : 
+                      'Not specified'}
+                  </Typography>
                 </Box>
               </Box>
             </InfoItem>

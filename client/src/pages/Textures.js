@@ -59,7 +59,8 @@ const Textures = () => {
   const [sortAnchorEl, setSortAnchorEl] = useState(null);
   const [activeFilters, setActiveFilters] = useState({
     tags: [],
-    creators: []
+    creators: [],
+    priceRange: null
   });
   const [sortOption, setSortOption] = useState('dateDesc');
   const [viewMode, setViewMode] = useState('grid');
@@ -70,6 +71,39 @@ const Textures = () => {
   });
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+
+  const priceRanges = [
+    { label: 'Free', min: 0, max: 0 },
+    { label: 'Under $5', min: 0.01, max: 5 },
+    { label: '$5 - $10', min: 5, max: 10 },
+    { label: '$10 - $20', min: 10, max: 20 },
+    { label: '$20 - $50', min: 20, max: 50 },
+    { label: 'Over $50', min: 50, max: null }
+  ];
+  
+  const filterAssetsByPrice = (assets, priceRange) => {
+    if (!priceRange) return assets;
+    
+    return assets.filter(asset => {
+      // If no price is set, exclude when filtering by price
+      if (!asset.price) return false;
+      
+      // Extract numeric value from price string (remove $ and any other non-numeric chars)
+      const priceValue = parseFloat(asset.price.replace(/[^0-9.]/g, ''));
+      
+      // Check if price is within range
+      if (priceRange.min === 0 && priceRange.max === 0) {
+        // Special case for free assets
+        return priceValue === 0;
+      } else if (priceRange.max === null) {
+        // For "Over X" ranges
+        return priceValue >= priceRange.min;
+      } else {
+        // For regular ranges
+        return priceValue >= priceRange.min && priceValue <= priceRange.max;
+      }
+    });
+  };
 
   // Extract texture assets and prepare filters when assets are loaded
   useEffect(() => {
@@ -117,6 +151,10 @@ const Textures = () => {
         activeFilters.creators.includes(asset.creator)
       );
     }
+
+    if (activeFilters.priceRange) {
+      filtered = filterAssetsByPrice(filtered, activeFilters.priceRange);
+    }
     
     // Apply sorting
     filtered = sortAssets(filtered, sortOption);
@@ -150,6 +188,18 @@ const Textures = () => {
           const sizeA = parseFloat((a.fileSize || '0').replace(/[^\d.]/g, ''));
           const sizeB = parseFloat((b.fileSize || '0').replace(/[^\d.]/g, ''));
           return sizeB - sizeA;
+        });
+      case 'priceAsc':
+        return sorted.sort((a, b) => {
+          const priceA = a.price ? parseFloat(a.price.replace(/[^0-9.]/g, '')) : 0;
+          const priceB = b.price ? parseFloat(b.price.replace(/[^0-9.]/g, '')) : 0;
+          return priceA - priceB;
+        });
+      case 'priceDesc':
+        return sorted.sort((a, b) => {
+          const priceA = a.price ? parseFloat(a.price.replace(/[^0-9.]/g, '')) : 0;
+          const priceB = b.price ? parseFloat(b.price.replace(/[^0-9.]/g, '')) : 0;
+          return priceB - priceA;
         });
       default:
         return sorted;
@@ -331,6 +381,15 @@ const Textures = () => {
                     variant="outlined"
                   />
                 ))}
+                {activeFilters.priceRange && (
+                  <Chip 
+                    label={`Price: ${activeFilters.priceRange.label}`} 
+                    size="small" 
+                    onDelete={() => setActiveFilters(prev => ({ ...prev, priceRange: null }))}
+                    color="primary"
+                    variant="outlined"
+                  />
+                )}
                 {(activeFilters.tags.length > 0 || activeFilters.creators.length > 0) && (
                   <Button 
                     size="small" 
@@ -588,6 +647,30 @@ const Textures = () => {
               />
             ))}
           </Box>
+
+          <Typography variant="h3" sx={{ mb: 2 }}>Filter By Price</Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 3 }}>
+              {priceRanges.map((range) => (
+                <Chip
+                  key={range.label}
+                  label={range.label}
+                  onClick={() => {
+                    // Toggle price range filter
+                    const newRange = activeFilters.priceRange && 
+                                    activeFilters.priceRange.label === range.label 
+                                    ? null : range;
+                    setActiveFilters(prev => ({
+                      ...prev,
+                      priceRange: newRange
+                    }));
+                  }}
+                  color={activeFilters.priceRange?.label === range.label ? 'primary' : 'default'}
+                  variant={activeFilters.priceRange?.label === range.label ? 'filled' : 'outlined'}
+                  size="small"
+                  sx={{ m: 0.5 }}
+                />
+              ))}
+            </Box>
           
           <Divider sx={{ my: 2 }} />
           
@@ -649,6 +732,18 @@ const Textures = () => {
           selected={sortOption === 'sizeDesc'}
         >
           Size (Large to Small)
+        </MenuItem>
+        <MenuItem 
+          onClick={() => handleSortChange('priceAsc')}
+          selected={sortOption === 'priceAsc'}
+        >
+          Price (Low to High)
+        </MenuItem>
+        <MenuItem 
+          onClick={() => handleSortChange('priceDesc')}
+          selected={sortOption === 'priceDesc'}
+        >
+          Price (High to Low)
         </MenuItem>
       </Menu>
       
