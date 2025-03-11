@@ -433,10 +433,31 @@ export const ApiProvider = ({ children }) => {
 
   const updateAssetDetails = async (assetId, updatedData) => {
     try {
-      // Call API to update the asset
-      const response = await assetsAPI.update(assetId, updatedData);
+      // Special handling for ownedVariant to prevent incorrect stringification
+      let dataToSend = { ...updatedData };
       
-      // Create updated asset object with the new data
+      // If ownedVariant exists and could be problematic (like an object), ensure proper handling
+      if (updatedData.ownedVariant !== undefined) {
+        console.log('API updating asset with ownedVariant:', 
+                    'Type:', typeof updatedData.ownedVariant,
+                    'Value:', updatedData.ownedVariant);
+        
+        // Make a deep copy of ownedVariant to avoid reference issues
+        if (Array.isArray(updatedData.ownedVariant)) {
+          dataToSend.ownedVariant = [...updatedData.ownedVariant];
+        } else if (typeof updatedData.ownedVariant === 'object' && updatedData.ownedVariant !== null) {
+          // If it's an object (but not null), make a proper copy to avoid [object Object] stringification
+          dataToSend.ownedVariant = JSON.parse(JSON.stringify(updatedData.ownedVariant));
+        } else {
+          // For primitive types, direct assignment is fine
+          dataToSend.ownedVariant = updatedData.ownedVariant;
+        }
+      }
+      
+      // Call API to update the asset with properly handled data
+      const response = await assetsAPI.update(assetId, dataToSend);
+      
+      // Create updated asset object with the new data, preserving original structure
       const updatedAsset = {
         ...updatedData,
         id: assetId
@@ -447,9 +468,29 @@ export const ApiProvider = ({ children }) => {
         // Helper function to update asset in an array
         const updateAssetInArray = (array) => {
           if (!array) return array;
-          return array.map(asset => 
-            asset.id === assetId ? { ...asset, ...updatedData } : asset
-          );
+          
+          return array.map(asset => {
+            if (asset.id === assetId) {
+              // Preserve special fields from the original asset if they might be complex
+              const preservedFields = {};
+              
+              // Explicitly preserve ownedVariant from the original if it exists
+              // and we aren't specifically updating it
+              if (asset.ownedVariant !== undefined) {
+                preservedFields.ownedVariant = updatedData.ownedVariant !== undefined 
+                  ? updatedData.ownedVariant 
+                  : asset.ownedVariant;
+              }
+              
+              // Return updated asset with preserved fields
+              return { 
+                ...asset, 
+                ...updatedData,
+                ...preservedFields 
+              };
+            }
+            return asset;
+          });
         };
         
         return {

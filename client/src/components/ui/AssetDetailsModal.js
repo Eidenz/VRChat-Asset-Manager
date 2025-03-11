@@ -92,9 +92,15 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
   const [localAsset, setLocalAsset] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const [editMode, setEditMode] = useState(false);
+  const [editedAsset, setEditedAsset] = useState(null);
+  const [editTagInput, setEditTagInput] = useState('');
+  const [availableTypes, setAvailableTypes] = useState([]);
+  const [loadingTypes, setLoadingTypes] = useState(false);
   
   const { toggleAssetFavorite, updateAssetDetails, updateAssetLastUsed, assets, deleteAsset, 
-    preferredCurrency, toggleAssetNsfw, blurNsfw } = useApi();
+    preferredCurrency, toggleAssetNsfw, blurNsfw, assetsAPI } = useApi();
 
   const [showNsfw, setShowNsfw] = useState(false);
 
@@ -152,23 +158,150 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
   const hasTags = localAsset?.tags && localAsset.tags.length > 0;
   
   // Determine if tabs should be shown at all
-  const showTabs = hasCompatibility || hasDescription || hasTags;
+  const showTabs = hasCompatibility || hasDescription || hasTags || editMode;
 
   // If the active tab doesn't have content, try to find one that does
   useEffect(() => {
-    if (showTabs) {
+    if (showTabs || editMode) {
       if (tabValue === 0 && !hasCompatibility) {
-        if (hasDescription) setTabValue(1);
-        else if (hasTags) setTabValue(2);
-      } else if (tabValue === 1 && !hasDescription) {
+        if (hasDescription || editMode) setTabValue(1);
+      } else if (tabValue === 1 && !hasDescription && !editMode) {
+        if (hasTags || editMode) setTabValue(2)
+          else setTabValue(0);
+      } else if (tabValue === 2 && !hasTags && !editMode) {
         if (hasCompatibility) setTabValue(0);
-        else if (hasTags) setTabValue(2);
-      } else if (tabValue === 2 && !hasTags) {
-        if (hasCompatibility) setTabValue(0);
-        else if (hasDescription) setTabValue(1);
       }
     }
-  }, [tabValue, hasCompatibility, hasDescription, hasTags, showTabs]);
+  }, [tabValue, hasCompatibility, hasDescription, hasTags, showTabs, editMode]);
+
+  useEffect(() => {
+    if (localAsset) {
+      setEditedAsset({
+        ...localAsset,
+        tags: [...(localAsset.tags || [])]
+      });
+    }
+  }, [localAsset]);
+
+  useEffect(() => {
+    const fetchAssetTypes = async () => {
+      setLoadingTypes(true);
+      try {
+        const response = await assetsAPI.getTypes();
+        setAvailableTypes(response.data || []);
+      } catch (error) {
+        console.error('Error fetching asset types:', error);
+      } finally {
+        setLoadingTypes(false);
+      }
+    };
+  
+    if (editMode) {
+      fetchAssetTypes();
+    }
+  }, [editMode, assetsAPI]);
+
+  const handleToggleEditMode = () => {
+    if (editMode) {
+      // Exiting edit mode without saving changes
+      setEditMode(false);
+      // Reset edited asset to the current localAsset
+      setEditedAsset({
+        ...localAsset,
+        tags: [...(localAsset.tags || [])]
+      });
+    } else {
+      // Entering edit mode
+      setEditMode(true);
+    }
+  };
+
+  const handleFieldChange = (e) => {
+    const { name, value } = e.target;
+    setEditedAsset(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleTypeChange = (e) => {
+    setEditedAsset(prev => ({
+      ...prev,
+      type: e.target.value
+    }));
+  };
+
+  const handleAddTag = () => {
+    if (editTagInput.trim() && !editedAsset.tags.includes(editTagInput.trim())) {
+      setEditedAsset(prev => ({
+        ...prev,
+        tags: [...prev.tags, editTagInput.trim()]
+      }));
+      setEditTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setEditedAsset(prev => ({
+      ...prev,
+      tags: prev.tags.filter(tag => tag !== tagToRemove)
+    }));
+  };
+
+  const handleTagInputKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddTag();
+    }
+  };
+
+  const handleSaveChanges = async () => {
+    setSaving(true);
+    try {
+      // Ensure we have the most up-to-date version of the asset before modification
+      const currentAsset = assets.all.find(a => a.id === localAsset.id) || localAsset;
+      
+      // First ensure ownedVariant is properly handled - it needs to be preserved exactly as is
+      // We need to handle all possible formats: array, string, or object
+      const originalOwnedVariant = currentAsset.ownedVariant;
+      
+      console.log('Original ownedVariant type:', typeof originalOwnedVariant, 
+                  'Value:', originalOwnedVariant,
+                  'Is Array:', Array.isArray(originalOwnedVariant));
+      
+      // Create an object with all fields from editedAsset
+      const updatedAsset = {
+        ...editedAsset,
+        // Explicitly preserve these important fields from the current asset state
+        nsfw: editedAsset.nsfw !== undefined ? editedAsset.nsfw : currentAsset.nsfw,
+        favorited: editedAsset.favorited !== undefined ? editedAsset.favorited : currentAsset.favorited,
+        compatibleWith: currentAsset.compatibleWith
+      };
+      
+      // Handle ownedVariant special case to avoid stringification issues
+      // This will directly assign the original value without any transformation
+      updatedAsset.ownedVariant = originalOwnedVariant;
+      
+      console.log('Saving asset with ownedVariant:', 
+                  'Type:', typeof updatedAsset.ownedVariant,
+                  'Value:', updatedAsset.ownedVariant,
+                  'Is Array:', Array.isArray(updatedAsset.ownedVariant));
+      
+      // Use the updateAssetDetails function from context
+      await updateAssetDetails(localAsset.id, updatedAsset);
+      
+      // Update local state
+      setLocalAsset(updatedAsset);
+      
+      // Exit edit mode
+      setEditMode(false);
+      setSaving(false);
+    } catch (error) {
+      console.error('Error updating asset details:', error);
+      alert('Failed to save changes: ' + (error.message || 'Unknown error'));
+      setSaving(false);
+    }
+  };
 
   if (!localAsset) return null;
 
@@ -347,11 +480,46 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
       }}
     >
       <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {editMode ? (
+        <TextField
+          name="name"
+          value={editedAsset?.name || ''}
+          onChange={handleFieldChange}
+          fullWidth
+          autoFocus
+          sx={{ mr: 2 }}
+          placeholder="Asset Name"
+          size="small"
+        />
+      ) : (
         <Typography variant="h2">{localAsset.name}</Typography>
+      )}
+      <Box sx={{ display: 'flex', gap: 1 }}>
+        <Button
+          variant={editMode ? "contained" : "outlined"}
+          color={editMode ? "success" : "primary"}
+          onClick={editMode ? handleSaveChanges : handleToggleEditMode}
+          startIcon={editMode ? <SaveIcon /> : <EditIcon />}
+          size="small"
+          disabled={saving}
+        >
+          {saving ? <CircularProgress size={24} /> : (editMode ? 'Save' : 'Edit')}
+        </Button>
+        {editMode && (
+          <Button
+            variant="outlined"
+            color="inherit"
+            onClick={handleToggleEditMode}
+            size="small"
+          >
+            Cancel
+          </Button>
+        )}
         <IconButton aria-label="close" onClick={handleClose} size="small">
           <CloseIcon />
         </IconButton>
-      </DialogTitle>
+      </Box>
+    </DialogTitle>
       <DialogContent dividers>
         <Grid container spacing={3}>
           {/* Asset Image */}
@@ -413,15 +581,46 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
 
           {/* Asset Details */}
           <Grid item xs={12} md={7}>
-            <InfoItem>
-              <InfoLabel>Creator</InfoLabel>
+          <InfoItem>
+            <InfoLabel>Creator</InfoLabel>
+            {editMode ? (
+              <TextField
+                name="creator"
+                value={editedAsset?.creator || ''}
+                onChange={handleFieldChange}
+                fullWidth
+                placeholder="Creator name"
+                size="small"
+              />
+            ) : (
               <InfoValue>{localAsset.creator}</InfoValue>
-            </InfoItem>
+            )}
+          </InfoItem>
 
-            <InfoItem>
-              <InfoLabel>Type</InfoLabel>
+          <InfoItem>
+            <InfoLabel>Type</InfoLabel>
+            {editMode ? (
+              <FormControl fullWidth size="small">
+                <Select
+                  value={editedAsset?.type || ''}
+                  onChange={handleTypeChange}
+                  displayEmpty
+                >
+                  {loadingTypes ? (
+                    <MenuItem disabled>Loading types...</MenuItem>
+                  ) : (
+                    availableTypes.map(type => (
+                      <MenuItem key={type.id} value={type.name}>
+                        {type.name}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+              </FormControl>
+            ) : (
               <InfoValue>{localAsset.type}</InfoValue>
-            </InfoItem>
+            )}
+          </InfoItem>
 
             <InfoItem>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -722,12 +921,12 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
               aria-label="asset details tabs"
             >
               {hasCompatibility && <Tab label="Compatibility" />}
-              {hasDescription && <Tab label="Description" />}
-              {hasTags && <Tab label="Tags" />}
+              {(hasDescription || editMode) && <Tab label="Description" />}
+              {(hasTags || editMode) && <Tab label="Tags" />}
             </Tabs>
             <Divider />
             
-            <Box sx={{ p: 2 }}>
+          <Box sx={{ p: 2 }}>
               {tabValue === 0 && hasCompatibility && (
                 <Box>
                   <Typography variant="h3" sx={{ mb: 2 }}>Compatibility Information</Typography>
@@ -790,25 +989,87 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
                 </Box>
               )}
                 
-              {tabValue === 1 && hasDescription && (
+              {tabValue === 1 && (hasDescription || editMode) && (
                 <Box>
                   <Typography variant="h3" sx={{ mb: 2 }}>Description</Typography>
+                  {editMode ? (
+                  <TextField
+                    name="description"
+                    value={editedAsset?.description || ''}
+                    onChange={handleFieldChange}
+                    fullWidth
+                    multiline
+                    rows={4}
+                    placeholder="Asset description..."
+                  />
+                ) : (
                   <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                    {localAsset.description}
+                    {localAsset.description ? (
+                      localAsset.description
+                    ) : (
+                      <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                        No description provided
+                      </Typography>
+                    )}
                   </Typography>
+                )}
                 </Box>
               )}
               
-              {tabValue === 2 && hasTags && (
-                <Box>
-                  <Typography variant="h3" sx={{ mb: 2 }}>Tags</Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {localAsset.tags && localAsset.tags.map((tag, index) => (
-                      <StyledChip key={index} label={tag} />
-                    ))}
+              {tabValue === 2 && (hasTags || editMode) && (
+              <Box>
+                <Typography variant="h3" sx={{ mb: 2 }}>Tags</Typography>
+                {editMode ? (
+                  <Box>
+                    <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                      <TextField
+                        value={editTagInput}
+                        onChange={(e) => setEditTagInput(e.target.value)}
+                        onKeyPress={handleTagInputKeyPress}
+                        placeholder="Add a tag..."
+                        size="small"
+                        fullWidth
+                      />
+                      <Button 
+                        onClick={handleAddTag}
+                        variant="contained"
+                        size="small"
+                        disabled={!editTagInput.trim()}
+                      >
+                        Add
+                      </Button>
+                    </Box>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {editedAsset?.tags?.map((tag, index) => (
+                        <Chip
+                          key={index}
+                          label={tag}
+                          onDelete={() => handleRemoveTag(tag)}
+                          sx={{ m: 0.5 }}
+                        />
+                      ))}
+                      {(!editedAsset?.tags || editedAsset.tags.length === 0) && (
+                        <Typography variant="body2" color="text.secondary" fontStyle="italic">
+                          No tags yet. Add some tags to help organize your assets.
+                        </Typography>
+                      )}
+                    </Box>
                   </Box>
-                </Box>
-              )}
+                ) : (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {(localAsset.tags && localAsset.tags.length > 0) ? (
+                      localAsset.tags.map((tag, index) => (
+                        <StyledChip key={index} label={tag} />
+                      ))
+                    ) : (
+                      <Typography variant="body2" color="text.secondary" fontStyle="italic">
+                        No tags available
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+              </Box>
+            )}
             </Box>
           </Box>
         )}

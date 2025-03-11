@@ -197,8 +197,10 @@ async function createAsset(asset) {
   // Format owned variant for database storage
   // If it's an array, stringify it; if not, store as is or null
   let storedOwnedVariant = null;
-  if (ownedVariant) {
+  if (ownedVariant !== null && ownedVariant !== undefined) {
     if (Array.isArray(ownedVariant)) {
+      storedOwnedVariant = JSON.stringify(ownedVariant);
+    } else if (typeof ownedVariant === 'object') {
       storedOwnedVariant = JSON.stringify(ownedVariant);
     } else {
       storedOwnedVariant = ownedVariant;
@@ -315,6 +317,11 @@ async function updateAsset(id, asset) {
   
   // Convert nsfw boolean to 0/1 for database
   const nsfwValue = nsfw ? 1 : 0;
+
+  // Convert Owned Variant array to TEXT
+  const ownedValue = JSON.stringify(asset.ownedVariant);
+
+  console.log(ownedValue);
   
   // Start a transaction
   await db.run('BEGIN TRANSACTION');
@@ -351,7 +358,7 @@ async function updateAsset(id, asset) {
       type, 
       notes, 
       favorited,
-      ownedVariant || null,
+      ownedValue || null,
       price || null,
       currency || 'USD',
       nsfwValue,
