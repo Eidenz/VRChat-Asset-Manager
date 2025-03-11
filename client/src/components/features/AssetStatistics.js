@@ -12,7 +12,9 @@ import {
   FormControl,
   Select,
   MenuItem,
-  InputLabel
+  InputLabel,
+  ToggleButton,
+  ToggleButtonGroup
 } from '@mui/material';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
@@ -24,8 +26,8 @@ import { getCurrencyInfo, SUPPORTED_CURRENCIES } from '../../utils/currencyUtils
 // Import API context
 import { useApi } from '../../context/ApiContext';
 
-// Custom colors for charts
-const COLORS = ['#7e4dd2', '#06d6a0', '#fdcb6e', '#e74c3c', '#3498db', '#9b59b6', '#1abc9c', '#f39c12'];
+// Custom colors for charts with better contrast
+const COLORS = ['#7e4dd2', '#06d6a0', '#fd6c6e', '#3498db', '#f39c12', '#9b59b6', '#1abc9c', '#e74c3c'];
 
 const AssetStatistics = () => {
   const { assets, loading, preferredCurrency } = useApi();
@@ -35,9 +37,14 @@ const AssetStatistics = () => {
     maxPrices: {},
     avgPrices: {},
     assetsByType: [],
-    spendingByType: [],
+    spendingByType: {},
     spendingByMonth: [],
   });
+  
+  // Add state for selected currency filter
+  const [selectedCurrency, setSelectedCurrency] = useState('ALL');
+  // Add state for chart type
+  const [categoryChartType, setCategoryChartType] = useState('pie');
   
   useEffect(() => {
     if (!loading.assets && assets.all && assets.all.length > 0) {
@@ -53,7 +60,7 @@ const AssetStatistics = () => {
     
     // Initialize maps for category breakdowns
     const typeCountMap = new Map();
-    const typeSpendMap = new Map();
+    const typeSpendMapByCurrency = new Map(); // We'll organize by currency first
     const monthlySpendMap = new Map();
     const currencySpendMap = new Map();
     const priceCountByCurrency = new Map();
@@ -102,9 +109,13 @@ const AssetStatistics = () => {
           currentCurrencySpend.displayValue = `${currencyInfo.symbol}${price.toFixed(2)}`;
           currencySpendMap.set(assetCurrency, currentCurrencySpend);
           
-          // Update type spending map (using the original currency)
-          const typeKey = `${asset.type}-${assetCurrency}`;
-          const currentTypeSpend = typeSpendMap.get(typeKey) || {
+          // Update type spending map - now organized by currency first
+          if (!typeSpendMapByCurrency.has(assetCurrency)) {
+            typeSpendMapByCurrency.set(assetCurrency, new Map());
+          }
+          
+          const typeMapForCurrency = typeSpendMapByCurrency.get(assetCurrency);
+          const currentTypeSpend = typeMapForCurrency.get(asset.type) || {
             name: asset.type,
             value: 0,
             currency: assetCurrency,
@@ -114,7 +125,7 @@ const AssetStatistics = () => {
           };
           currentTypeSpend.value += price;
           currentTypeSpend.count += 1;
-          typeSpendMap.set(typeKey, currentTypeSpend);
+          typeMapForCurrency.set(asset.type, currentTypeSpend);
           
           // Extract date and add to monthly spending (keeping original currency)
           if (asset.dateAdded) {
@@ -159,8 +170,36 @@ const AssetStatistics = () => {
     });
     
     // Convert maps to arrays for charts
-    const spendingByType = Array.from(typeSpendMap.values())
-      .sort((a, b) => b.value - a.value);
+    // Create spending by type for each currency
+    const spendingByType = {};
+    typeSpendMapByCurrency.forEach((typeMap, currency) => {
+      // For each currency, get all the types and sort by value
+      spendingByType[currency] = Array.from(typeMap.values())
+        .sort((a, b) => b.value - a.value);
+      
+      // Process to limit the number of slices in the pie chart
+      // Keep top 5 categories, group the rest as "Other"
+      if (spendingByType[currency].length > 5) {
+        const top5 = spendingByType[currency].slice(0, 5);
+        const others = spendingByType[currency].slice(5);
+        
+        const otherTotal = others.reduce((sum, item) => sum + item.value, 0);
+        const otherCount = others.reduce((sum, item) => sum + item.count, 0);
+        
+        if (otherTotal > 0) {
+          top5.push({
+            name: "Other",
+            value: otherTotal,
+            currency: currency,
+            symbol: getCurrencyInfo(currency).symbol,
+            count: otherCount,
+            displayName: `Other (${currency})`
+          });
+        }
+        
+        spendingByType[currency] = top5;
+      }
+    });
     
     const assetsByType = Array.from(typeCountMap, ([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
@@ -214,6 +253,11 @@ const AssetStatistics = () => {
       spendingByType,
       spendingByMonth: filteredMonths
     });
+    
+    // Default the selected currency to the first one if available
+    if (spendingByCurrency.length > 0 && selectedCurrency === 'ALL') {
+      setSelectedCurrency(spendingByCurrency[0].name);
+    }
   };
   
   // Format currency for display
@@ -250,6 +294,44 @@ const AssetStatistics = () => {
       );
     }
     return null;
+  };
+  
+  const handleCurrencyChange = (event) => {
+    setSelectedCurrency(event.target.value);
+  };
+  
+  const handleChartTypeChange = (event, newValue) => {
+    if (newValue !== null) {
+      setCategoryChartType(newValue);
+    }
+  };
+  
+  // Custom label for pie chart
+  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name, displayName }) => {
+    const RADIAN = Math.PI / 180;
+    const radius = outerRadius * 1.1;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    
+    // Only show label if segment is significant enough (more than 5%)
+    if (percent < 0.05) return null;
+    
+    // Get the display name without currency
+    const displayText = displayName ? displayName.split(' (')[0] : name;
+    
+    return (
+      <text 
+        x={x} 
+        y={y} 
+        fill={COLORS[index % COLORS.length]}
+        textAnchor={x > cx ? 'start' : 'end'} 
+        dominantBaseline="central"
+        fontSize={12}
+        fontWeight="bold"
+      >
+        {`${displayText} (${(percent * 100).toFixed(0)}%)`}
+      </text>
+    );
   };
   
   // If loading, show progress indicator
@@ -358,13 +440,16 @@ const AssetStatistics = () => {
       
       {/* Charts Section */}
       <Grid container spacing={4}>
-        {/* Spending by Currency Pie Chart */}
+        {/* Spending by Currency - Now showing separate charts for each currency */}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 2, bgcolor: 'background.default', height: '100%' }}>
-            <Typography variant="h3" sx={{ mb: 2 }}>Spending by Currency</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h3">Currency Distribution</Typography>
+            </Box>
             
             {stats.spendingByCurrency.length > 0 ? (
               <Box sx={{ height: 300 }}>
+                {/* Display a pie chart showing the relative number of assets per currency */}
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -374,9 +459,9 @@ const AssetStatistics = () => {
                       labelLine={false}
                       outerRadius={100}
                       fill="#8884d8"
-                      dataKey="value"
+                      dataKey="count"
                       nameKey="name"
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      label={(entry) => `${entry.name}: ${entry.count} assets`}
                     >
                       {stats.spendingByCurrency.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -397,49 +482,125 @@ const AssetStatistics = () => {
           </Paper>
         </Grid>
         
-        {/* Spending by Type Pie Chart */}
+        {/* Spending by Type - Now using selected currency */}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 2, bgcolor: 'background.default', height: '100%' }}>
-            <Typography variant="h3" sx={{ mb: 2 }}>Spending by Category</Typography>
-            
-            <Box sx={{ height: 300 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={stats.spendingByType}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                    nameKey="displayName"
-                    label={({ displayName, percent }) => 
-                      `${displayName ? displayName.split(' (')[0] : ''}: ${(percent * 100).toFixed(0)}%`
-                    }
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h3">Spending by Category</Typography>
+              
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <ToggleButtonGroup
+                  value={categoryChartType}
+                  exclusive
+                  onChange={handleChartTypeChange}
+                  aria-label="chart type"
+                  size="small"
+                >
+                  <ToggleButton value="pie" aria-label="pie chart">
+                    Pie
+                  </ToggleButton>
+                  <ToggleButton value="bar" aria-label="bar chart">
+                    Bar
+                  </ToggleButton>
+                </ToggleButtonGroup>
+                
+                <FormControl variant="outlined" size="small" sx={{ minWidth: 120 }}>
+                  <InputLabel id="currency-select-label">Currency</InputLabel>
+                  <Select
+                    labelId="currency-select-label"
+                    id="currency-select"
+                    value={selectedCurrency}
+                    onChange={handleCurrencyChange}
+                    label="Currency"
                   >
-                    {stats.spendingByType.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    {stats.spendingByCurrency.map((currency) => (
+                      <MenuItem key={currency.name} value={currency.name}>
+                        {currency.name}
+                      </MenuItem>
                     ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+                  </Select>
+                </FormControl>
+              </Box>
             </Box>
+            
+            {selectedCurrency && stats.spendingByType[selectedCurrency] && stats.spendingByType[selectedCurrency].length > 0 ? (
+              <Box sx={{ height: 300 }}>
+                {categoryChartType === 'pie' ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={stats.spendingByType[selectedCurrency]}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={true}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                        nameKey="name"
+                        label={renderCustomizedLabel}
+                      >
+                        {stats.spendingByType[selectedCurrency].map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={stats.spendingByType[selectedCurrency]}
+                      layout="vertical"
+                      margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+                    >
+                      <XAxis type="number" />
+                      <YAxis dataKey="name" type="category" width={100} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" fill="#7e4dd2" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+                <Typography variant="body1" color="text.secondary">
+                  No spending data available for {selectedCurrency}
+                </Typography>
+              </Box>
+            )}
           </Paper>
         </Grid>
         
         {/* Monthly Spending Bar Chart - Split by currency */}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 2, bgcolor: 'background.default', height: '100%' }}>
-            <Typography variant="h3" sx={{ mb: 2 }}>Monthly Spending</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h3">Monthly Spending</Typography>
+              
+              <FormControl variant="outlined" size="small" sx={{ minWidth: 120 }}>
+                <InputLabel id="month-currency-select-label">Currency</InputLabel>
+                <Select
+                  labelId="month-currency-select-label"
+                  id="month-currency-select"
+                  value={selectedCurrency}
+                  onChange={handleCurrencyChange}
+                  label="Currency"
+                >
+                  {stats.spendingByCurrency.map((currency) => (
+                    <MenuItem key={currency.name} value={currency.name}>
+                      {currency.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
             
             {stats.spendingByMonth.length > 0 ? (
               <Box sx={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={stats.spendingByMonth}
+                    data={stats.spendingByMonth.filter(item => item.currency === selectedCurrency)}
                     margin={{ top: 5, right: 30, left: 20, bottom: 20 }}
                   >
                     <XAxis 
