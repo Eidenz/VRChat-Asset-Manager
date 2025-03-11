@@ -472,13 +472,91 @@ export const ApiProvider = ({ children }) => {
     }
   };
 
+  const toggleAssetNsfw = async (assetId) => {
+    try {
+      // Call the API endpoint to toggle NSFW status
+      const response = await assetsAPI.toggleNsfw(assetId);
+      
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to toggle NSFW status');
+      }
+      
+      // Update assets state with the new NSFW status
+      setAssets(prev => {
+        // Find the asset in the all array to get its full data
+        const assetToUpdate = prev.all.find(a => a.id === assetId);
+        if (!assetToUpdate) return prev; // Safety check
+        
+        // Create updated asset with new NSFW status
+        const updatedAsset = { 
+          ...assetToUpdate, 
+          nsfw: response.nsfw 
+        };
+        
+        // Helper function to update asset in an array
+        const updateAssetInArray = (array) => {
+          if (!array) return array;
+          return array.map(asset => 
+            asset.id === assetId ? updatedAsset : asset
+          );
+        };
+        
+        // Update all asset categories
+        return {
+          ...prev,
+          all: updateAssetInArray(prev.all),
+          clothing: updateAssetInArray(prev.clothing),
+          props: updateAssetInArray(prev.props),
+          accessories: updateAssetInArray(prev.accessories),
+          textures: updateAssetInArray(prev.textures),
+          animations: updateAssetInArray(prev.animations),
+          recent: updateAssetInArray(prev.recent),
+          favorites: updateAssetInArray(prev.favorites)
+        };
+      });
+      
+      console.log(`Asset ${assetId} NSFW status toggled to ${response.nsfw}`);
+      return response.nsfw;
+    } catch (error) {
+      console.error(`Error toggling NSFW for asset ${assetId}:`, error);
+      throw error;
+    }
+  };
+
+  const [blurNsfw, setBlurNsfw] = useState(true);
+
+  const fetchBlurNsfwSetting = useCallback(async () => {
+    try {
+      const response = await settingsAPI.get('blur_nsfw');
+      if (response && response.data) {
+        setBlurNsfw(response.data.value);
+      }
+    } catch (error) {
+      console.error('Error fetching blur_nsfw setting:', error);
+      // Default to true for safety
+      setBlurNsfw(true);
+    }
+  }, [settingsAPI]);
+
+  const updateBlurNsfwSetting = async (value) => {
+    try {
+      await settingsAPI.update('blur_nsfw', value);
+      setBlurNsfw(value);
+      return true;
+    } catch (error) {
+      console.error('Error updating blur_nsfw setting:', error);
+      throw error;
+    }
+  };
+
   // Load all data on initial mount
   useEffect(() => {
     fetchAvatars();
     fetchAssets();
     fetchCollections();
     fetchSettings();
-  }, [fetchAvatars, fetchAssets, fetchCollections, fetchSettings]);
+    fetchBlurNsfwSetting();
+  }, [fetchAvatars, fetchAssets, fetchCollections, fetchSettings, fetchBlurNsfwSetting]);
 
   // Value object to be provided by the context
   const value = {
@@ -487,6 +565,7 @@ export const ApiProvider = ({ children }) => {
     assets,
     collections,
     settings,
+    blurNsfw,
     
     // Status
     loading,
@@ -512,6 +591,8 @@ export const ApiProvider = ({ children }) => {
     linkCollectionToAvatar,
     unlinkCollectionFromAvatar,
     updateAssetDetails,
+    toggleAssetNsfw,
+    updateBlurNsfwSetting,
     
     // API services
     avatarsAPI,

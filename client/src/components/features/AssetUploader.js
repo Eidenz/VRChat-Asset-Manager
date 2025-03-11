@@ -26,7 +26,8 @@ import {
   Paper,
   Dialog,
   ListItemText,
-  InputAdornment
+  InputAdornment,
+  FormControlLabel
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
@@ -121,7 +122,8 @@ const AssetUploader = ({ onClose }) => {
     ownedVariant: '', 
     notes: '',
     price: '',
-    currency: ''
+    currency: '',
+    nsfw: false
   });
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -716,6 +718,34 @@ const AssetUploader = ({ onClose }) => {
                         </Select>
                       </FormControl>
                     </Grid>
+
+                    <Grid item xs={12}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={assetData.nsfw}
+                            onChange={(e) => setAssetData(prev => ({ ...prev, nsfw: e.target.checked }))}
+                            color="error"
+                          />
+                        }
+                        label={
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Typography color={assetData.nsfw ? 'error' : 'inherit'}>
+                              Mark as NSFW (Not Safe For Work)
+                            </Typography>
+                            <Chip 
+                              label="18+" 
+                              size="small" 
+                              color="error" 
+                              sx={{ ml: 1, display: assetData.nsfw ? 'flex' : 'none' }}
+                            />
+                          </Box>
+                        }
+                      />
+                      <FormHelperText>
+                        Enable this for adult content. NSFW assets can be blurred in the UI based on your settings.
+                      </FormHelperText>
+                    </Grid>
                   
                   <Grid item xs={12}>
                     <TextField
@@ -993,6 +1023,21 @@ const AssetUploader = ({ onClose }) => {
                             }}
                           >
                             {assetData.price ? `${assetData.price} (${assetData.currency})` : 'Not specified'}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ mb: 3 }}>
+                          <Typography variant="body2" color="text.secondary">Content Rating</Typography>
+                          <Typography 
+                            variant="body1" 
+                            sx={{ 
+                              fontWeight: assetData.nsfw ? 'bold' : 'normal',
+                              color: assetData.nsfw ? 'error.main' : 'text.secondary',
+                              fontStyle: assetData.nsfw ? 'normal' : 'italic'
+                            }}
+                          >
+                            {assetData.nsfw ? 'NSFW (18+)' : 'Safe For Work'}
                           </Typography>
                         </Box>
                       </Grid>

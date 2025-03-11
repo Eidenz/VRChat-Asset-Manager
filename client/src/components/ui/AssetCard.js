@@ -49,7 +49,7 @@ const StyledBadge = styled(Box)(({ theme }) => ({
   fontSize: 12,
   fontWeight: 500,
   borderRadius: 4,
-  zIndex: 1,
+  zIndex: 3,
 }));
 
 const StyledFavoriteButton = styled(IconButton)(({ theme, active }) => ({
@@ -60,7 +60,7 @@ const StyledFavoriteButton = styled(IconButton)(({ theme, active }) => ({
   height: 32,
   backgroundColor: active ? theme.palette.error.main : 'rgba(0,0,0,0.5)',
   color: 'white',
-  zIndex: 1,
+  zIndex: 3,
   '&:hover': {
     backgroundColor: active ? theme.palette.error.dark : theme.palette.primary.main,
   },
@@ -108,7 +108,7 @@ const ActionButton = styled(Button)(({ theme, color }) => ({
 
 const AssetCard = ({ asset: propAsset }) => {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
-  const { toggleAssetFavorite, assets } = useApi();
+  const { toggleAssetFavorite, assets, blurNsfw } = useApi();
   
   // Keep a local copy of the asset that can update when the global state changes
   const [asset, setAsset] = useState(propAsset);
@@ -127,6 +127,41 @@ const AssetCard = ({ asset: propAsset }) => {
       }
     }
   }, [assets, asset]);
+
+  const NsfwBadge = styled(Box)(({ theme }) => ({
+    position: 'absolute',
+    top: 42,
+    left: 12,
+    padding: '4px 8px',
+    backgroundColor: theme.palette.error.main,
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+    borderRadius: 4,
+    zIndex: 3,
+  }));
+
+  const BlurOverlay = styled(Box)(({ theme }) => ({
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backdropFilter: 'blur(8px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    zIndex: 2,
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+    '&:hover': {
+      backdropFilter: 'blur(5px)',
+      backgroundColor: 'rgba(0,0,0,0.3)',
+    }
+  }));
+
+  const [showNsfw, setShowNsfw] = useState(false);
   
   const handleToggleFavorite = (e) => {
     e.stopPropagation();
@@ -139,6 +174,11 @@ const AssetCard = ({ asset: propAsset }) => {
 
   const handleCloseDetails = () => {
     setDetailsModalOpen(false);
+  };
+
+  const handleToggleNsfwBlur = (e) => {
+    e.stopPropagation();
+    setShowNsfw(!showNsfw);
   };
 
   const handleDownload = (e) => {
@@ -176,11 +216,17 @@ const AssetCard = ({ asset: propAsset }) => {
               transition: 'transform 0.5s ease',
               '&:hover': {
                 transform: 'scale(1.05)',
-              }
+              },
+              filter: asset.nsfw && blurNsfw && !showNsfw ? 'blur(10px)' : 'none'
             }}
           />
           {asset.type && (
             <StyledBadge>{asset.type}</StyledBadge>
+          )}
+          {asset.nsfw && (
+            <NsfwBadge>
+              NSFW
+            </NsfwBadge>
           )}
           <StyledFavoriteButton 
             size="small" 
@@ -190,6 +236,31 @@ const AssetCard = ({ asset: propAsset }) => {
           >
             {asset.favorited ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
           </StyledFavoriteButton>
+
+          {/* Blur overlay for NSFW content that can be clicked to reveal */}
+          {asset.nsfw && blurNsfw && !showNsfw && (
+            <BlurOverlay onClick={handleToggleNsfwBlur}>
+              <Box sx={{ 
+                p: 2, 
+                bgcolor: 'background.paper', 
+                borderRadius: 2,
+                textAlign: 'center',
+                maxWidth: '80%'
+              }}>
+                <Typography variant="body1" sx={{ mb: 1 }}>NSFW Content</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  This asset contains adult content
+                </Typography>
+                <Button 
+                  variant="contained" 
+                  color="error" 
+                  size="small"
+                >
+                  Click to View
+                </Button>
+              </Box>
+            </BlurOverlay>
+          )}
         </Box>
         
         <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>

@@ -43,6 +43,10 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { formatCurrency, SUPPORTED_CURRENCIES, getCurrencyInfo } from '../../utils/currencyUtils';
+import BlockIcon from '@mui/icons-material/Block';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import NotInterestedIcon from '@mui/icons-material/NotInterested';
 
 // Import API context
 import { useApi } from '../../context/ApiContext';
@@ -89,7 +93,23 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   
-  const { toggleAssetFavorite, updateAssetDetails, updateAssetLastUsed, assets, deleteAsset, preferredCurrency } = useApi();
+  const { toggleAssetFavorite, updateAssetDetails, updateAssetLastUsed, assets, deleteAsset, 
+    preferredCurrency, toggleAssetNsfw, blurNsfw } = useApi();
+
+  const [showNsfw, setShowNsfw] = useState(false);
+
+  const handleToggleNsfw = async () => {
+    try {
+      // Call the API function from context
+      const newNsfwStatus = await toggleAssetNsfw(localAsset.id);
+
+    } catch (error) {
+      console.error('Error toggling NSFW status:', error);
+      
+      // Show error to user
+      alert(`Failed to toggle NSFW status: ${error.message}`);
+    }
+  };
 
   // Use localAsset to ensure we always show the latest data
   useEffect(() => {
@@ -336,17 +356,19 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
         <Grid container spacing={3}>
           {/* Asset Image */}
           <Grid item xs={12} md={5}>
-            <Box
-              component="img"
-              src={localAsset.thumbnail}
-              alt={localAsset.name}
-              sx={{
-                width: '100%',
-                height: 'auto',
-                borderRadius: 2,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-              }}
-            />
+          <Box
+            component="img"
+            src={localAsset.thumbnail}
+            alt={localAsset.name}
+            sx={{
+              width: '100%',
+              height: 'auto',
+              borderRadius: 2,
+              boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+              filter: localAsset.nsfw && blurNsfw && !showNsfw ? 'blur(10px)' : 'none',
+              position: 'relative'
+            }}
+          />
             <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Button 
                 variant="contained" 
@@ -357,6 +379,27 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
               >
                 Download Asset
               </Button>
+              <Button 
+                variant="outlined"
+                fullWidth
+                onClick={handleToggleNsfw}
+                startIcon={localAsset.nsfw ? <NotInterestedIcon color="error" /> : <BlockIcon />}
+                color={localAsset.nsfw ? "error" : "default"}
+                sx={{ mt: 2, mb: 1 }}
+              >
+                {localAsset.nsfw ? 'Remove NSFW Flag' : 'Mark as NSFW'}
+              </Button>
+              {localAsset.nsfw && blurNsfw && (
+                <Button
+                  variant="text"
+                  fullWidth
+                  onClick={() => setShowNsfw(!showNsfw)}
+                  startIcon={showNsfw ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                  sx={{ mt: 1 }}
+                >
+                  {showNsfw ? 'Hide Content' : 'Show Content'}
+                </Button>
+              )}
               <Button
                 variant="outlined"
                 fullWidth
@@ -378,6 +421,48 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
             <InfoItem>
               <InfoLabel>Type</InfoLabel>
               <InfoValue>{localAsset.type}</InfoValue>
+            </InfoItem>
+
+            <InfoItem>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <InfoLabel>Content Rating</InfoLabel>
+              </Box>
+              <Box 
+                sx={{ 
+                  p: 2, 
+                  backgroundColor: 'background.default', 
+                  borderRadius: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2
+                }}
+              >
+                {localAsset.nsfw ? (
+                  <>
+                    <Chip 
+                      label="NSFW" 
+                      size="small" 
+                      color="error" 
+                      icon={<NotInterestedIcon />} 
+                    />
+                    <Typography variant="body2" color="error.main">
+                      This asset contains adult content and may be blurred based on your settings
+                    </Typography>
+                  </>
+                ) : (
+                  <>
+                    <Chip 
+                      label="Safe" 
+                      size="small" 
+                      color="success" 
+                      icon={<CheckCircleIcon />} 
+                    />
+                    <Typography variant="body2" color="text.secondary">
+                      This asset is marked as safe
+                    </Typography>
+                  </>
+                )}
+              </Box>
             </InfoItem>
 
             <Grid container spacing={2}>

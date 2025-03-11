@@ -18,6 +18,36 @@ async function columnExists(tableName, columnName) {
   }
 }
 
+
+/**
+ * Add NSFW flag to assets table and blur_nsfw setting
+ * @returns {Promise<void>}
+ */
+async function addNsfwSupport() {
+  try {
+    console.log('Running migration: Adding NSFW support');
+    
+    // Check if nsfw column exists in assets table
+    const assetsColumns = await db.all(`PRAGMA table_info(assets)`);
+    if (!assetsColumns.some(col => col.name === 'nsfw')) {
+      console.log('Adding nsfw column to assets table');
+      await db.run('ALTER TABLE assets ADD COLUMN nsfw INTEGER DEFAULT 0');
+    }
+    
+    // Add blur_nsfw setting if it doesn't exist
+    const settingExists = await db.get('SELECT 1 FROM settings WHERE key = ?', ['blur_nsfw']);
+    if (!settingExists) {
+      console.log('Adding blur_nsfw setting');
+      await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['blur_nsfw', '1']);
+    }
+    
+    console.log('NSFW support migration completed successfully');
+  } catch (error) {
+    console.error('Error adding NSFW support:', error);
+    throw error;
+  }
+}
+
 /**
  * Runs all necessary database migrations
  * @returns {Promise<void>}
@@ -48,6 +78,12 @@ async function runMigrations() {
       console.log('Running migration: Adding currency_preference to settings');
       await db.run('INSERT INTO settings (key, value) VALUES (?, ?)', ['currency_preference', 'USD']);
       console.log('Migration completed: Added currency_preference to settings');
+    }
+    
+    // Migration 4: Add NSFW support
+    const nsfwColumnExists = await columnExists('assets', 'nsfw');
+    if (!nsfwColumnExists) {
+      await addNsfwSupport();
     }
     
     // Add more migrations here as needed in the future

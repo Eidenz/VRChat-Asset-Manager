@@ -40,8 +40,9 @@ const formatAsset = (asset) => {
     tags: asset.tags || [],
     compatibleWith: asset.compatibleWith || [],
     ownedVariant: ownedVariant,
-    price: asset.price || null,  // Include price in the formatted asset
-    currency: asset.currency || 'USD'  // Include currency, default to USD if not specified
+    price: asset.price || null,
+    currency: asset.currency || 'USD',
+    nsfw: asset.nsfw === 1
   };
 };
 
@@ -336,6 +337,69 @@ router.get('/tags/all', async (req, res) => {
     res.json({ success: true, data: tags });
   } catch (err) {
     console.error('Error getting tags:', err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+/**
+ * @route   PUT /api/assets/:id/nsfw
+ * @desc    Toggle asset NSFW status
+ * @access  Public
+ */
+router.put('/:id/nsfw',
+  param('id').isInt().withMessage('Asset ID must be an integer'),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    
+    try {
+      const result = await assetsModel.toggleNsfw(req.params.id);
+      
+      return res.json({
+        success: result.success,
+        nsfw: result.nsfw,
+        message: result.nsfw ? 'Asset marked as NSFW' : 'Asset marked as safe'
+      });
+    } catch (err) {
+      console.error('Error toggling NSFW status:', err);
+      return res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+);
+
+/**
+ * @route   GET /api/assets/nsfw
+ * @desc    Get all NSFW assets
+ * @access  Public
+ */
+router.get('/nsfw', async (req, res) => {
+  try {
+    // Get all NSFW assets
+    const assets = await db.all(`
+      SELECT * FROM assets 
+      WHERE nsfw = 1 
+      ORDER BY date_added DESC
+    `);
+    
+    // Format and include tags, etc.
+    const formattedAssets = await Promise.all(assets.map(async (asset) => {
+      const tags = await getAssetTags(asset.id);
+      const compatibleWith = await getAssetCompatibleAvatars(asset.id);
+      
+      return {
+        ...asset,
+        tags,
+        compatibleWith,
+        favorited: asset.favorited === 1,
+        nsfw: asset.nsfw === 1
+      };
+    }));
+    
+    res.json({ success: true, data: formattedAssets });
+  } catch (err) {
+    console.error('Error getting NSFW assets:', err.message);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

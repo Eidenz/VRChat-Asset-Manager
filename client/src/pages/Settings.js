@@ -18,7 +18,8 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  FormHelperText
+  FormHelperText,
+  Chip
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import FolderIcon from '@mui/icons-material/Folder';
@@ -28,18 +29,32 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '../context/ThemeContext';
 import { SUPPORTED_CURRENCIES } from '../utils/currencyUtils';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import NotInterestedIcon from '@mui/icons-material/NotInterested';
 
 // Import API context
 import { useApi } from '../context/ApiContext';
 
 const Settings = () => {
   const { mode, toggleTheme } = useTheme();
-  const { settings, loading, errors, updateSettings } = useApi();
+  const { settings, loading, errors, updateSettings, blurNsfw, updateBlurNsfwSetting } = useApi();
   
   const [formSettings, setFormSettings] = useState(settings);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [saveError, setSaveError] = useState(null);
+
+  const handleBlurNsfwChange = async (event) => {
+    try {
+      const newValue = event.target.checked;
+      await updateBlurNsfwSetting(newValue);
+      setSaveSuccess(true);
+    } catch (error) {
+      console.error('Error updating NSFW blur setting:', error);
+      setSaveError(error.message || 'Failed to update NSFW blur setting');
+    }
+  };
 
   // Initialize form with settings from API
   useEffect(() => {
@@ -279,8 +294,92 @@ const Settings = () => {
                   </FormHelperText>
                 </FormControl>
               </Box>
+              <FormControlLabel 
+                control={
+                  <Switch 
+                    checked={blurNsfw}
+                    onChange={handleBlurNsfwChange}
+                    color="error"
+                  />
+                } 
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography>Blur NSFW Content</Typography>
+                    <NotInterestedIcon fontSize="small" color="error" />
+                  </Box>
+                }
+              />
+              <Typography variant="body2" color="text.secondary" sx={{ pl: 4, pb: 2 }}>
+                When enabled, content marked as NSFW (Not Safe For Work) will be blurred until clicked
+              </Typography>
             </Paper>
           </motion.div>
+          <Box sx={{ mt: 3, mb: 2 }}>
+            <Typography variant="h3" sx={{ mb: 2 }}>NSFW Content Preview</Typography>
+            <Box 
+              sx={{ 
+                position: 'relative', 
+                width: '100%', 
+                height: 200, 
+                backgroundColor: 'grey.800',
+                borderRadius: 2,
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Typography variant="h2" sx={{ color: 'white', opacity: 0.7 }}>
+                Sample Content
+              </Typography>
+              
+              {/* Show blur effect based on the current setting */}
+              {blurNsfw && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backdropFilter: 'blur(10px)',
+                    backgroundColor: 'rgba(0,0,0,0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexDirection: 'column',
+                    gap: 2
+                  }}
+                >
+                  <Chip label="NSFW" color="error" size="small" />
+                  <Typography variant="body1" color="white">
+                    Content is blurred
+                  </Typography>
+                  <Button 
+                    variant="contained" 
+                    color="error" 
+                    size="small"
+                    startIcon={<VisibilityIcon />}
+                  >
+                    Click to Reveal
+                  </Button>
+                </Box>
+              )}
+              
+              {/* Show chip for reference */}
+              {!blurNsfw && (
+                <Chip 
+                  label="NSFW" 
+                  color="error" 
+                  size="small"
+                  sx={{ position: 'absolute', top: 10, right: 10 }}
+                />
+              )}
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              This preview shows how NSFW content will appear with your current settings
+            </Typography>
+          </Box>
         </>
       )}
       

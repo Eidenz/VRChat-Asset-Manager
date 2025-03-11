@@ -186,15 +186,13 @@ async function createAsset(asset) {
   const { 
     name, creator, description, fileSize, filePath, 
     downloadUrl, version, type, notes, tags = [], 
-    compatibleWith = [], ownedVariant, price, currency, // Add currency to the destructured parameters
+    compatibleWith = [], ownedVariant, price, currency,
+    nsfw, // Add NSFW parameter
     serverUploadedImage
   } = asset;
   
   // Use serverUploadedImage if available, fallback to thumbnail
   const thumbnail = serverUploadedImage || asset.thumbnail;
-  
-  console.log('Creating asset with thumbnail:', thumbnail);
-  console.log('(serverUploadedImage was:', serverUploadedImage, ')');
   
   // Format owned variant for database storage
   // If it's an array, stringify it; if not, store as is or null
@@ -213,6 +211,9 @@ async function createAsset(asset) {
   // Ensure favorited is properly converted to 0/1 for database
   const favorited = asset.favorited ? 1 : 0;
   
+  // Convert nsfw boolean to 0/1 for database
+  const nsfwValue = nsfw ? 1 : 0;
+  
   // Start a transaction
   await db.run('BEGIN TRANSACTION');
   
@@ -222,13 +223,13 @@ async function createAsset(asset) {
       INSERT INTO assets (
         name, creator, description, thumbnail, date_added, last_used, 
         file_size, file_path, download_url, version, type, favorited, notes,
-        owned_variant, price, currency
+        owned_variant, price, currency, nsfw
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       name, creator, description, thumbnail, dateAdded, lastUsed,
       fileSize, filePath, downloadUrl, version, type, favorited, notes,
-      storedOwnedVariant, price, currency || 'USD'
+      storedOwnedVariant, price, currency || 'USD', nsfwValue
     ]);
     
     const assetId = result.lastID;
@@ -306,17 +307,20 @@ async function updateAsset(id, asset) {
   const { 
     name, creator, description, thumbnail, fileSize, filePath, 
     downloadUrl, version, type, notes, tags, compatibleWith,
-    ownedVariant, price, currency  // Add currency to the destructured parameters
+    ownedVariant, price, currency, nsfw  // Add nsfw
   } = asset;
   
   // Ensure favorited is properly converted to 0/1 for database
   const favorited = asset.favorited ? 1 : 0;
   
+  // Convert nsfw boolean to 0/1 for database
+  const nsfwValue = nsfw ? 1 : 0;
+  
   // Start a transaction
   await db.run('BEGIN TRANSACTION');
   
   try {
-    // Update the asset including currency
+    // Update the asset including currency and nsfw flag
     const result = await db.run(`
       UPDATE assets 
       SET name = ?, 
@@ -332,7 +336,8 @@ async function updateAsset(id, asset) {
           favorited = ?,
           owned_variant = ?,
           price = ?,
-          currency = ?
+          currency = ?,
+          nsfw = ?
       WHERE id = ?
     `, [
       name, 
@@ -349,6 +354,7 @@ async function updateAsset(id, asset) {
       ownedVariant || null,
       price || null,
       currency || 'USD',
+      nsfwValue,
       id
     ]);
     
@@ -501,6 +507,40 @@ async function getAllTags() {
   `);
 }
 
+/**
+ * Toggle asset NSFW status
+ * @param {number} id - Asset ID
+ * @returns {Promise<Object>} Status and new NSFW value
+ */
+async function toggleNsfw(id) {
+  try {
+    // Get current NSFW status
+    const asset = await getAssetById(id);
+    if (!asset) throw new Error('Asset not found');
+    
+    // Toggle from true to false or false to true
+    const newStatus = !asset.nsfw;
+    
+    // Use the 0/1 database convention for boolean values
+    const nsfwValue = newStatus ? 1 : 0;
+    
+    // Update NSFW status in database
+    const result = await db.run(`
+      UPDATE assets 
+      SET nsfw = ? 
+      WHERE id = ?
+    `, [nsfwValue, id]);
+    
+    return {
+      success: result.changes > 0,
+      nsfw: newStatus
+    };
+  } catch (error) {
+    console.error(`Error toggling NSFW status for asset ${id}:`, error);
+    throw error;
+  }
+}
+
 module.exports = {
   getAllAssets,
   getAssetById,
@@ -513,5 +553,6 @@ module.exports = {
   toggleFavorite,
   deleteAsset,
   getAllAssetTypes,
-  getAllTags
+  getAllTags,
+  toggleNsfw
 };
