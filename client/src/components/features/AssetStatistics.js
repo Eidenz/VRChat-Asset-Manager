@@ -280,7 +280,7 @@ const AssetStatistics = () => {
   }
   
   return (
-    <Paper sx={{ p: 3 }}>
+    <>
       <Typography variant="h2" sx={{ mb: 3 }}>Asset Spending Statistics</Typography>
       
       {/* Summary Cards */}
@@ -488,7 +488,7 @@ const AssetStatistics = () => {
           </Paper>
         </Grid>
       </Grid>
-    </Paper>
+    </>
   );
 };
 

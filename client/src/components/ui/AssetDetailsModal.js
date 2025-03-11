@@ -21,6 +21,11 @@ import {
   ListItemIcon,
   ListItemText,
   CircularProgress,
+  FormControl,
+  MenuItem,
+  Select,
+  InputLabel,
+  InputAdornment
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -36,7 +41,8 @@ import LinkIcon from '@mui/icons-material/Link';
 import { styled } from '@mui/material/styles';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VerifiedIcon from '@mui/icons-material/Verified';
-import { formatCurrency } from '../../utils/currencyUtils';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import { formatCurrency, SUPPORTED_CURRENCIES, getCurrencyInfo } from '../../utils/currencyUtils';
 
 // Import API context
 import { useApi } from '../../context/ApiContext';
@@ -69,21 +75,36 @@ const InfoValue = styled(Typography)(({ theme }) => ({
 const AssetDetailsModal = ({ open, handleClose, asset }) => {
   const [tabValue, setTabValue] = useState(0);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [isEditingFileInfo, setIsEditingFileInfo] = useState(false);
   const [notes, setNotes] = useState('');
+  const [fileInfo, setFileInfo] = useState({
+    version: '',
+    filePath: '',
+    downloadUrl: '',
+    price: '',
+    currency: 'USD'
+  });
   const [saving, setSaving] = useState(false);
   const [localAsset, setLocalAsset] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   
-  const { toggleAssetFavorite, assetsAPI, updateAssetLastUsed, assets, deleteAsset } = useApi();
+  const { toggleAssetFavorite, assetsAPI, updateAssetLastUsed, assets, deleteAsset, preferredCurrency } = useApi();
 
   // Use localAsset to ensure we always show the latest data
   useEffect(() => {
     if (asset) {
       setLocalAsset(asset);
       setNotes(asset.notes || '');
+      setFileInfo({
+        version: asset.version || '',
+        filePath: asset.filePath || '',
+        downloadUrl: asset.downloadUrl || '',
+        price: asset.price || '',
+        currency: asset.currency || preferredCurrency || 'USD'
+      });
     }
-  }, [asset]);
+  }, [asset, preferredCurrency]);
 
   // Update localAsset when assets change (e.g. after toggling favorite)
   useEffect(() => {
@@ -92,9 +113,42 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
       const updatedAsset = assets.all.find(a => a.id === localAsset.id);
       if (updatedAsset) {
         setLocalAsset(updatedAsset);
+        
+        // Also update fileInfo state to match any external changes
+        setFileInfo({
+          version: updatedAsset.version || '',
+          filePath: updatedAsset.filePath || '',
+          downloadUrl: updatedAsset.downloadUrl || '',
+          price: updatedAsset.price || '',
+          currency: updatedAsset.currency || preferredCurrency || 'USD'
+        });
       }
     }
-  }, [assets, localAsset]);
+  }, [assets, localAsset, preferredCurrency]);
+
+  // Determine if tabs should be shown based on content
+  const hasCompatibility = localAsset?.compatibleWith && localAsset.compatibleWith.length > 0;
+  const hasDescription = localAsset?.description && localAsset.description.trim() !== '';
+  const hasTags = localAsset?.tags && localAsset.tags.length > 0;
+  
+  // Determine if tabs should be shown at all
+  const showTabs = hasCompatibility || hasDescription || hasTags;
+
+  // If the active tab doesn't have content, try to find one that does
+  useEffect(() => {
+    if (showTabs) {
+      if (tabValue === 0 && !hasCompatibility) {
+        if (hasDescription) setTabValue(1);
+        else if (hasTags) setTabValue(2);
+      } else if (tabValue === 1 && !hasDescription) {
+        if (hasCompatibility) setTabValue(0);
+        else if (hasTags) setTabValue(2);
+      } else if (tabValue === 2 && !hasTags) {
+        if (hasCompatibility) setTabValue(0);
+        else if (hasDescription) setTabValue(1);
+      }
+    }
+  }, [tabValue, hasCompatibility, hasDescription, hasTags, showTabs]);
 
   if (!localAsset) return null;
 
@@ -113,6 +167,10 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
 
   const handleEditNotes = () => {
     setIsEditingNotes(true);
+  };
+
+  const handleEditFileInfo = () => {
+    setIsEditingFileInfo(true);
   };
 
   const handleSaveNotes = async () => {
@@ -138,8 +196,79 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
     }
   };
 
+  const handleSaveFileInfo = async () => {
+    setSaving(true);
+    try {
+      // Process price to include currency symbol
+      let formattedPrice = fileInfo.price;
+      if (formattedPrice && !formattedPrice.includes(getCurrencyInfo(fileInfo.currency).symbol)) {
+        const numericValue = fileInfo.price.replace(/[^\d.]/g, '');
+        if (numericValue) {
+          formattedPrice = `${getCurrencyInfo(fileInfo.currency).symbol}${numericValue}`;
+        }
+      }
+
+      // Create an updated asset object with ALL properties from localAsset
+      // plus our updated properties
+      const updatedAsset = {
+        ...localAsset,
+        version: fileInfo.version,
+        filePath: fileInfo.filePath,
+        downloadUrl: fileInfo.downloadUrl,
+        price: formattedPrice,
+        currency: fileInfo.currency
+      };
+      
+      // Save the file info to API
+      const response = await assetsAPI.update(localAsset.id, updatedAsset);
+      
+      // Refresh assets to ensure we get the updated data from the server
+      await assetsAPI.getById(localAsset.id).then(updatedResponse => {
+        if (updatedResponse && updatedResponse.data) {
+          // Update the local asset with the fresh data from the server
+          setLocalAsset(updatedResponse.data);
+          
+          // Also update the form state to match the server data
+          setFileInfo({
+            version: updatedResponse.data.version || '',
+            filePath: updatedResponse.data.filePath || '',
+            downloadUrl: updatedResponse.data.downloadUrl || '',
+            price: updatedResponse.data.price || '',
+            currency: updatedResponse.data.currency || 'USD'
+          });
+        }
+      });
+      
+      // Exit edit mode
+      setIsEditingFileInfo(false);
+    } catch (error) {
+      console.error('Error updating file info:', error);
+      // Show error message to user
+      alert('Failed to save changes: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleNotesChange = (e) => {
     setNotes(e.target.value);
+  };
+
+  const handleFileInfoChange = (e) => {
+    const { name, value } = e.target;
+    setFileInfo(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handlePriceChange = (e) => {
+    const rawValue = e.target.value;
+    // Just store the raw value for now - we'll format it on save
+    setFileInfo(prev => ({
+      ...prev,
+      price: rawValue
+    }));
   };
 
   const formatDate = (dateString) => {
@@ -278,94 +407,194 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
             </Grid>
 
             <InfoItem>
-              <InfoLabel>File Information</InfoLabel>
-              <Box 
-                sx={{ 
-                  p: 2, 
-                  backgroundColor: 'background.default', 
-                  borderRadius: 2,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 1 
-                }}
-              >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2">Size:</Typography>
-                  <Typography variant="body2">{localAsset.fileSize || 'Unknown'}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2">Version:</Typography>
-                  <Typography variant="body2">{localAsset.version || 'N/A'}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2">Local Path:</Typography>
-                  <Tooltip title={localAsset.filePath || 'No path specified'}>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        maxWidth: '250px', 
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => {
-                        if (localAsset.filePath) 
-                          navigator.clipboard.writeText(localAsset.filePath);
-                      }}
-                    >
-                      {localAsset.filePath || 'No path specified'}
-                    </Typography>
-                  </Tooltip>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2">Download URL:</Typography>
-                  <Tooltip title={localAsset.downloadUrl || 'No URL specified'}>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        maxWidth: '250px', 
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        cursor: localAsset.downloadUrl ? 'pointer' : 'default',
-                        color: localAsset.downloadUrl ? 'primary.main' : 'text.secondary',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5
-                      }}
-                      onClick={() => {
-                        if (localAsset.downloadUrl) 
-                          window.open(localAsset.downloadUrl, '_blank');
-                      }}
-                    >
-                      {localAsset.downloadUrl ? (
-                        <>
-                          <LinkIcon fontSize="small" />
-                          Original Source
-                        </>
-                      ) : (
-                        'No URL specified'
-                      )}
-                    </Typography>
-                  </Tooltip>
-                </Box>
-
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2">Price:</Typography>
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      fontWeight: 'bold', 
-                      color: localAsset.price ? 'primary.main' : 'text.secondary'
-                    }}
-                  >
-                    {localAsset.price ? 
-                      `${localAsset.price} (${localAsset.currency || 'USD'})` : 
-                      'Not specified'}
-                  </Typography>
-                </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <InfoLabel>File Information</InfoLabel>
+                <IconButton 
+                  size="small" 
+                  onClick={isEditingFileInfo ? handleSaveFileInfo : handleEditFileInfo}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <CircularProgress size={20} />
+                  ) : isEditingFileInfo ? (
+                    <SaveIcon fontSize="small" />
+                  ) : (
+                    <EditIcon fontSize="small" />
+                  )}
+                </IconButton>
               </Box>
+              {isEditingFileInfo ? (
+                <Box 
+                  sx={{ 
+                    p: 2, 
+                    backgroundColor: 'background.default', 
+                    borderRadius: 2,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 2
+                  }}
+                >
+
+                  <TextField
+                    fullWidth
+                    label="Version"
+                    name="version"
+                    value={fileInfo.version}
+                    onChange={handleFileInfoChange}
+                    placeholder="e.g., 1.0"
+                    size="small"
+                  />
+                  <TextField
+                    fullWidth
+                    label="File Path"
+                    name="filePath"
+                    value={fileInfo.filePath}
+                    onChange={handleFileInfoChange}
+                    placeholder="Local path to the file"
+                    size="small"
+                  />
+                  <TextField
+                    fullWidth
+                    label="Download URL"
+                    name="downloadUrl"
+                    value={fileInfo.downloadUrl}
+                    onChange={handleFileInfoChange}
+                    placeholder="URL where this asset can be downloaded"
+                    size="small"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <LinkIcon fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <Grid container spacing={2}>
+                    <Grid item xs={8}>
+                      <TextField
+                        fullWidth
+                        label="Price"
+                        name="price"
+                        value={fileInfo.price}
+                        onChange={handlePriceChange}
+                        placeholder={`${getCurrencyInfo(fileInfo.currency).symbol}0.00`}
+                        size="small"
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <AttachMoneyIcon fontSize="small" />
+                            </InputAdornment>
+                          )
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={4}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel id="currency-select-label">Currency</InputLabel>
+                        <Select
+                          labelId="currency-select-label"
+                          id="currency-select"
+                          name="currency"
+                          value={fileInfo.currency}
+                          label="Currency"
+                          onChange={handleFileInfoChange}
+                        >
+                          {SUPPORTED_CURRENCIES.map((currency) => (
+                            <MenuItem key={currency.code} value={currency.code}>
+                              {currency.code}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                  </Grid>
+                </Box>
+              ) : (
+                <Box 
+                  sx={{ 
+                    p: 2, 
+                    backgroundColor: 'background.default', 
+                    borderRadius: 2,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1 
+                  }}
+                >
+
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="body2">Version:</Typography>
+                    <Typography variant="body2">{localAsset.version || 'N/A'}</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="body2">Local Path:</Typography>
+                    <Tooltip title={localAsset.filePath || 'No path specified'}>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          maxWidth: '250px', 
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => {
+                          if (localAsset.filePath) 
+                            navigator.clipboard.writeText(localAsset.filePath);
+                        }}
+                      >
+                        {localAsset.filePath || 'No path specified'}
+                      </Typography>
+                    </Tooltip>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="body2">Download URL:</Typography>
+                    <Tooltip title={localAsset.downloadUrl || 'No URL specified'}>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          maxWidth: '250px', 
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          cursor: localAsset.downloadUrl ? 'pointer' : 'default',
+                          color: localAsset.downloadUrl ? 'primary.main' : 'text.secondary',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.5
+                        }}
+                        onClick={() => {
+                          if (localAsset.downloadUrl) 
+                            window.open(localAsset.downloadUrl, '_blank');
+                        }}
+                      >
+                        {localAsset.downloadUrl ? (
+                          <>
+                            <LinkIcon fontSize="small" />
+                            Original Source
+                          </>
+                        ) : (
+                          'No URL specified'
+                        )}
+                      </Typography>
+                    </Tooltip>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="body2">Price:</Typography>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        fontWeight: 'bold', 
+                        color: localAsset.price ? 'primary.main' : 'text.secondary'
+                      }}
+                    >
+                      {localAsset.price ? 
+                        `${localAsset.price} (${localAsset.currency || 'USD'})` : 
+                        'Not specified'}
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
             </InfoItem>
 
             <InfoItem>
@@ -402,108 +631,107 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
           </Grid>
         </Grid>
 
-        {/* Tabs section */}
-        <Box sx={{ width: '100%', mt: 4 }}>
-          <Tabs
-            value={tabValue}
-            onChange={handleTabChange}
-            textColor="primary"
-            indicatorColor="primary"
-            aria-label="asset details tabs"
-          >
-            <Tab label="Compatibility" />
-            <Tab label="Description" />
-            <Tab label="Tags" />
-          </Tabs>
-          <Divider />
-          
-          <Box sx={{ p: 2 }}>
-          {tabValue === 0 && (
-            <Box>
-              <Typography variant="h3" sx={{ mb: 2 }}>Compatibility Information</Typography>
-              
-              <Typography variant="body1" sx={{ mb: 2 }}>
-                This asset is compatible with the following avatar bases:
-              </Typography>
-              
-              <List sx={{ bgcolor: 'background.default', borderRadius: 2, mb: 3 }}>
-                {localAsset.compatibleWith && localAsset.compatibleWith.map((base, index) => {
-                  // Check if this base is in the owned variants
-                  const isOwned = localAsset.ownedVariant && (
-                    Array.isArray(localAsset.ownedVariant) 
-                      ? localAsset.ownedVariant.includes(base)
-                      : localAsset.ownedVariant === base
-                  );
+        {/* Tabs section - Only show if there's actual content */}
+        {showTabs && (
+          <Box sx={{ width: '100%', mt: 4 }}>
+            <Tabs
+              value={tabValue}
+              onChange={handleTabChange}
+              textColor="primary"
+              indicatorColor="primary"
+              aria-label="asset details tabs"
+            >
+              {hasCompatibility && <Tab label="Compatibility" />}
+              {hasDescription && <Tab label="Description" />}
+              {hasTags && <Tab label="Tags" />}
+            </Tabs>
+            <Divider />
+            
+            <Box sx={{ p: 2 }}>
+              {tabValue === 0 && hasCompatibility && (
+                <Box>
+                  <Typography variant="h3" sx={{ mb: 2 }}>Compatibility Information</Typography>
                   
-                  return (
-                    <ListItem key={index} sx={{
-                      position: 'relative',
-                      bgcolor: 'transparent',
-                      borderRadius: 1,
-                      mb: 0.5
-                    }}>
-                      <ListItemIcon>
-                        {isOwned ? (
-                          <VerifiedIcon color="success" />
-                        ) : (
-                          <CheckCircleIcon color="disabled" />
-                        )}
-                      </ListItemIcon>
-                      <ListItemText 
-                        primary={base} 
-                        secondary={isOwned ? "You own this variant" : "Compatible but not owned"}
-                      />
-                      {isOwned && (
-                        <Box
-                          sx={{
-                            position: 'absolute',
-                            right: 16,
-                            bgcolor: 'success.main',
-                            color: 'white',
-                            px: 1,
-                            py: 0.5,
-                            borderRadius: 1,
-                            fontSize: '0.75rem',
-                            fontWeight: 'bold',
-                            display: 'flex',
-                            alignItems: 'center'
-                          }}
-                        >
-                          <VerifiedIcon fontSize="small" sx={{ mr: 0.5 }} />
-                          Owned
-                        </Box>
-                      )}
-                    </ListItem>
-                  );
-                })}
-              </List>
-            </Box>
-          )}
-            
-            {tabValue === 1 && (
-              <Box>
-                <Typography variant="h3" sx={{ mb: 2 }}>Description</Typography>
-                <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                  {localAsset.description || 'No description provided.'}
-                </Typography>
-              </Box>
-            )}
-            
-            {tabValue === 2 && (
-              <Box>
-                <Typography variant="h3" sx={{ mb: 2 }}>Tags</Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {localAsset.tags && localAsset.tags.map((tag, index) => (
-                    <StyledChip key={index} label={tag} />
-                  ))}
-                  {(!localAsset.tags || localAsset.tags.length === 0) && (
-                    <Typography variant="body1">No tags assigned to this asset.</Typography>
-                  )}
+                  <Typography variant="body1" sx={{ mb: 2 }}>
+                    This asset is compatible with the following avatar bases:
+                  </Typography>
+                  
+                  <List sx={{ bgcolor: 'background.default', borderRadius: 2, mb: 3 }}>
+                    {localAsset.compatibleWith && localAsset.compatibleWith.map((base, index) => {
+                      // Check if this base is in the owned variants
+                      const isOwned = localAsset.ownedVariant && (
+                        Array.isArray(localAsset.ownedVariant) 
+                          ? localAsset.ownedVariant.includes(base)
+                          : localAsset.ownedVariant === base
+                      );
+                      
+                      return (
+                        <ListItem key={index} sx={{
+                          position: 'relative',
+                          bgcolor: 'transparent',
+                          borderRadius: 1,
+                          mb: 0.5
+                        }}>
+                          <ListItemIcon>
+                            {isOwned ? (
+                              <VerifiedIcon color="success" />
+                            ) : (
+                              <CheckCircleIcon color="disabled" />
+                            )}
+                          </ListItemIcon>
+                          <ListItemText 
+                            primary={base} 
+                            secondary={isOwned ? "You own this variant" : "Compatible but not owned"}
+                          />
+                          {isOwned && (
+                            <Box
+                              sx={{
+                                position: 'absolute',
+                                right: 16,
+                                bgcolor: 'success.main',
+                                color: 'white',
+                                px: 1,
+                                py: 0.5,
+                                borderRadius: 1,
+                                fontSize: '0.75rem',
+                                fontWeight: 'bold',
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}
+                            >
+                              <VerifiedIcon fontSize="small" sx={{ mr: 0.5 }} />
+                              Owned
+                            </Box>
+                          )}
+                        </ListItem>
+                      );
+                    })}
+                  </List>
                 </Box>
-              </Box>
-            )}
+              )}
+                
+              {tabValue === 1 && hasDescription && (
+                <Box>
+                  <Typography variant="h3" sx={{ mb: 2 }}>Description</Typography>
+                  <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                    {localAsset.description}
+                  </Typography>
+                </Box>
+              )}
+              
+              {tabValue === 2 && hasTags && (
+                <Box>
+                  <Typography variant="h3" sx={{ mb: 2 }}>Tags</Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {localAsset.tags && localAsset.tags.map((tag, index) => (
+                      <StyledChip key={index} label={tag} />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+            </Box>
           </Box>
-        </Box>
+        )}
       </DialogContent>
       <DialogActions sx={{ p: 2 }}>
         <Button 
