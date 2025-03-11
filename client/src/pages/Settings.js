@@ -30,7 +30,6 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useTheme } from '../context/ThemeContext';
 import { SUPPORTED_CURRENCIES } from '../utils/currencyUtils';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import NotInterestedIcon from '@mui/icons-material/NotInterested';
 
 // Import API context
@@ -38,23 +37,12 @@ import { useApi } from '../context/ApiContext';
 
 const Settings = () => {
   const { mode, toggleTheme } = useTheme();
-  const { settings, loading, errors, updateSettings, blurNsfw, updateBlurNsfwSetting } = useApi();
+  const { settings, loading, errors, updateSettings, updateBlurNsfwSetting } = useApi();
   
   const [formSettings, setFormSettings] = useState(settings);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [saveError, setSaveError] = useState(null);
-
-  const handleBlurNsfwChange = async (event) => {
-    try {
-      const newValue = event.target.checked;
-      await updateBlurNsfwSetting(newValue);
-      setSaveSuccess(true);
-    } catch (error) {
-      console.error('Error updating NSFW blur setting:', error);
-      setSaveError(error.message || 'Failed to update NSFW blur setting');
-    }
-  };
 
   // Initialize form with settings from API
   useEffect(() => {
@@ -75,6 +63,8 @@ const Settings = () => {
       await updateSettings(formSettings);
       setSaveSuccess(true);
       setSaveError(null);
+      //update blur
+      updateBlurNsfwSetting(formSettings?.blur_nsfw);
     } catch (error) {
       console.error('Error saving settings:', error);
       setSaveError(error.message || 'Failed to save settings');
@@ -297,8 +287,8 @@ const Settings = () => {
               <FormControlLabel 
                 control={
                   <Switch 
-                    checked={blurNsfw}
-                    onChange={handleBlurNsfwChange}
+                    checked={formSettings?.blur_nsfw}
+                    onChange={(e) => handleSettingChange('blur_nsfw', e.target.checked)}
                     color="error"
                   />
                 } 
@@ -334,7 +324,7 @@ const Settings = () => {
               </Typography>
               
               {/* Show blur effect based on the current setting */}
-              {blurNsfw && (
+              {formSettings?.blur_nsfw && (
                 <Box
                   sx={{
                     position: 'absolute',
@@ -367,7 +357,7 @@ const Settings = () => {
               )}
               
               {/* Show chip for reference */}
-              {!blurNsfw && (
+              {!formSettings?.blur_nsfw && (
                 <Chip 
                   label="NSFW" 
                   color="error" 

@@ -24,11 +24,8 @@ router.get('/', async (req, res) => {
  * @desc    Get setting by key
  * @access  Public
  */
-router.put('/:key',
-  [
-    param('key').notEmpty().withMessage('Setting key is required'),
-    body('value').exists().withMessage('Setting value is required')
-  ],
+router.get('/:key',
+  param('key').notEmpty().withMessage('Setting key is required'),
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -36,15 +33,15 @@ router.put('/:key',
     }
     
     try {
-      const success = await settingsModel.updateSetting(req.params.key, req.body.value);
+      const value = await settingsModel.getSetting(req.params.key);
       
-      res.json({ 
-        success: true, 
-        message: 'Setting updated',
-        data: { key: req.params.key, value: req.body.value }
-      });
+      if (value === null) {
+        return res.status(404).json({ success: false, message: 'Setting not found' });
+      }
+      
+      res.json({ success: true, data: { key: req.params.key, value } });
     } catch (err) {
-      console.error('Error updating setting:', err.message);
+      console.error('Error getting setting:', err.message);
       res.status(500).json({ success: false, message: 'Server error' });
     }
   }
