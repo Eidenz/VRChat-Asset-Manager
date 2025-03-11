@@ -163,8 +163,9 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
   // If the active tab doesn't have content, try to find one that does
   useEffect(() => {
     if (showTabs || editMode) {
-      if (tabValue === 0 && !hasCompatibility) {
-        if (hasDescription || editMode) setTabValue(1);
+      if (tabValue === 0 && !hasCompatibility && !editMode) {
+        if (hasDescription || editMode) setTabValue(1)
+          else if (hasTags || editMode) setTabValue(2);
       } else if (tabValue === 1 && !hasDescription && !editMode) {
         if (hasTags || editMode) setTabValue(2)
           else setTabValue(0);
@@ -930,14 +931,14 @@ const AssetDetailsModal = ({ open, handleClose, asset }) => {
               indicatorColor="primary"
               aria-label="asset details tabs"
             >
-              {hasCompatibility && <Tab label="Compatibility" />}
+              {(hasCompatibility || editMode) && <Tab label="Compatibility" />}
               {(hasDescription || editMode) && <Tab label="Description" />}
               {(hasTags || editMode) && <Tab label="Tags" />}
             </Tabs>
             <Divider />
             
           <Box sx={{ p: 2 }}>
-              {tabValue === 0 && hasCompatibility && (
+              {tabValue === 0 && (hasCompatibility || editMode) && (
                 <Box>
                   <Typography variant="h3" sx={{ mb: 2 }}>Compatibility Information</Typography>
                   
