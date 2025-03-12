@@ -1,599 +1,595 @@
 // src/components/features/CompatibilityChecker.js
 import React, { useState, useEffect } from 'react';
 import {
-  Paper,
-  Typography,
   Box,
-  FormControl,
-  InputLabel,
+  Typography,
+  Paper,
+  Grid,
   Select,
   MenuItem,
-  Button,
-  Grid,
+  FormControl,
+  InputLabel,
   Chip,
-  Alert,
-  CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
   Divider,
+  CircularProgress,
+  Button,
+  TextField,
+  Pagination,
+  FormControlLabel,
+  Switch,
   Card,
   CardMedia,
   CardContent,
-  CardActionArea
+  Alert,
+  IconButton,
+  Tooltip
 } from '@mui/material';
-import InfoIcon from '@mui/icons-material/Info';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import SearchIcon from '@mui/icons-material/Search';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import VerifiedIcon from '@mui/icons-material/Verified';
-import CloseIcon from '@mui/icons-material/Close';
-import PublicIcon from '@mui/icons-material/Public';
-import { styled } from '@mui/material/styles';
-
-// Import API context
+import { motion } from 'framer-motion';
 import { useApi } from '../../context/ApiContext';
 
-const ResultItem = styled(Box)(({ theme, status }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  padding: theme.spacing(1.5),
-  borderRadius: theme.shape.borderRadius,
-  backgroundColor: 
-    status === 'yes' ? 'rgba(0, 184, 148, 0.1)' : 
-    status === 'mostly' || status === 'partial' ? 'rgba(253, 203, 110, 0.1)' : 
-    status === 'no' ? 'rgba(231, 76, 60, 0.1)' : 'transparent',
-  marginBottom: theme.spacing(1),
-}));
-
-// Asset card for the compatible assets list
-const AssetCard = styled(Card)(({ theme, owned, universal }) => ({
-  height: '100%',
-  display: 'flex',
-  flexDirection: 'column',
-  position: 'relative',
-  transition: 'transform 0.2s ease-in-out',
-  '&:hover': {
-    transform: 'translateY(-4px)',
-    boxShadow: theme.shadows[6],
-  },
-  ...(owned === false && {
-    opacity: 0.7,
-    border: '1px dashed rgba(255,255,255,0.2)',
-  }),
-  ...(universal && {
-    border: '2px solid rgba(0,184,148,0.3)',
-  }),
-}));
-
-const OwnershipBadge = styled(Box)(({ theme, owned }) => ({
-  position: 'absolute',
-  top: 8,
-  right: 8,
-  padding: '4px 8px',
-  borderRadius: 12,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 4,
-  fontSize: 12,
-  fontWeight: 500,
-  backgroundColor: owned ? theme.palette.success.main : theme.palette.error.main,
-  color: '#fff',
-  zIndex: 1,
-}));
-
-const UniversalBadge = styled(Box)(({ theme }) => ({
-  position: 'absolute',
-  top: 8,
-  left: 8,
-  padding: '4px 8px',
-  borderRadius: 12,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 4,
-  fontSize: 12,
-  fontWeight: 500,
-  backgroundColor: theme.palette.info.main,
-  color: '#fff',
-  zIndex: 1,
-}));
-
-// Note: In the future, this could be fetched from the backend
-// For now, we'll keep it in the component as a fallback
-const compatibilityMatrix = {
-  'Feline3.0': {
-    'HumanMale4.2': {
-      boneStructure: 'partial',
-      materials: 'yes',
-      animations: 'partial',
-      notes: 'Limb proportions differ significantly'
-    },
-    'HumanFemale4.2': {
-      boneStructure: 'partial',
-      materials: 'yes',
-      animations: 'partial',
-      notes: 'Limb proportions differ significantly'
-    },
-    'Fantasy2.0': {
-      boneStructure: 'mostly',
-      materials: 'yes',
-      animations: 'mostly',
-      notes: 'Good compatibility overall with minor adjustments'
-    }
-  },
-  'HumanMale4.2': {
-    'HumanFemale4.2': {
-      boneStructure: 'yes',
-      materials: 'yes',
-      animations: 'yes',
-      notes: 'Excellent compatibility with minimal adjustments'
-    },
-    'HumanSlim3.1': {
-      boneStructure: 'mostly',
-      materials: 'yes',
-      animations: 'mostly',
-      notes: 'Some scaling needed for best results'
-    }
-  }
-};
+const ITEMS_PER_PAGE = 10; // Number of assets to show per page
 
 const CompatibilityChecker = () => {
-  // Use the API context
-  const { avatars, assets, loading, errors, assetsAPI } = useApi();
-
-  const [sourceAvatar, setSourceAvatar] = useState('');
-  const [asset, setAsset] = useState('');
-  const [avatarBase, setAvatarBase] = useState('');
-  const [localLoading, setLocalLoading] = useState(false);
-  const [results, setResults] = useState(null);
+  const { avatars, assets, loading } = useApi();
+  
+  // Selected avatar state
+  const [selectedAvatarId, setSelectedAvatarId] = useState('');
+  const [selectedAvatar, setSelectedAvatar] = useState(null);
+  
+  // Assets filtering state
+  const [filteredAssets, setFilteredAssets] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedAssetTypes, setSelectedAssetTypes] = useState([]);
+  
+  // Available asset types
+  const [assetTypes, setAssetTypes] = useState([]);
+  
+  // Mode selection: 'avatar' or 'single'
+  const [mode, setMode] = useState('avatar');
+  
+  // Selected asset for individual compatibility check
+  const [selectedAssetId, setSelectedAssetId] = useState('');
+  const [selectedAsset, setSelectedAsset] = useState(null);
+  
+  // Only show compatible assets toggle
+  const [showOnlyCompatible, setShowOnlyCompatible] = useState(true);
+  
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [paginatedAssets, setPaginatedAssets] = useState([]);
+  
+  // Filtered compatible assets
   const [compatibleAssets, setCompatibleAssets] = useState([]);
-  const [mode, setMode] = useState('list'); // 'asset' or 'list'
-  const [compatibilityData, setCompatibilityData] = useState(compatibilityMatrix);
-  const [searchAttempted, setSearchAttempted] = useState(false);
 
-  // Get all assets from api context
-  const allAssets = assets.all || [];
-  const allAvatars = avatars || [];
+  // Set available asset types from all assets
+  useEffect(() => {
+    if (assets.all && assets.all.length > 0) {
+      const types = [...new Set(assets.all.map(asset => asset.type))];
+      setAssetTypes(types);
+    }
+  }, [assets.all]);
 
-  // Extract all unique avatar bases from avatars
-  const uniqueBases = [...new Set(allAvatars.map(avatar => avatar.base))];
+  // Handle avatar selection
+  useEffect(() => {
+    if (selectedAvatarId && avatars.length > 0) {
+      const avatar = avatars.find(a => a.id === parseInt(selectedAvatarId));
+      setSelectedAvatar(avatar);
+    } else {
+      setSelectedAvatar(null);
+    }
+  }, [selectedAvatarId, avatars]);
 
-  const handleSourceAvatarChange = (event) => {
-    setSourceAvatar(event.target.value);
-    setResults(null);
+  // Handle asset selection for individual compatibility check
+  useEffect(() => {
+    if (selectedAssetId && assets.all && assets.all.length > 0) {
+      const asset = assets.all.find(a => a.id === parseInt(selectedAssetId));
+      setSelectedAsset(asset);
+    } else {
+      setSelectedAsset(null);
+    }
+  }, [selectedAssetId, assets.all]);
+
+  // Filter assets based on search query, type filters, and compatibility option
+  useEffect(() => {
+    if (!assets.all) return;
+    
+    let filtered = [...assets.all];
+    
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(asset => 
+        asset.name.toLowerCase().includes(query) || 
+        asset.creator.toLowerCase().includes(query) ||
+        (asset.description && asset.description.toLowerCase().includes(query)) ||
+        (asset.tags && asset.tags.some(tag => tag.toLowerCase().includes(query)))
+      );
+    }
+    
+    // Apply type filter
+    if (selectedAssetTypes.length > 0) {
+      filtered = filtered.filter(asset => selectedAssetTypes.includes(asset.type));
+    }
+    
+    setFilteredAssets(filtered);
+    
+    // Filter compatible assets
+    if (selectedAvatar) {
+      const compatibleFiltered = filtered.filter(asset => 
+        asset.compatibleWith && 
+        asset.compatibleWith.includes(selectedAvatar.base)
+      );
+      setCompatibleAssets(compatibleFiltered);
+      
+      // Calculate total pages for pagination of compatible assets
+      setTotalPages(Math.ceil(compatibleFiltered.length / ITEMS_PER_PAGE));
+    } else {
+      setCompatibleAssets([]);
+      setTotalPages(1);
+    }
+    
+    // Reset to first page when filters change
+    setPage(1);
+  }, [searchQuery, selectedAssetTypes, assets.all, selectedAvatar]);
+
+  // Update paginated assets when page changes
+  useEffect(() => {
+    if (compatibleAssets.length > 0) {
+      const startIndex = (page - 1) * ITEMS_PER_PAGE;
+      const endIndex = startIndex + ITEMS_PER_PAGE;
+      setPaginatedAssets(compatibleAssets.slice(startIndex, endIndex));
+    } else {
+      setPaginatedAssets([]);
+    }
+  }, [compatibleAssets, page]);
+
+  const handleAvatarChange = (event) => {
+    setSelectedAvatarId(event.target.value);
   };
 
   const handleAssetChange = (event) => {
-    setAsset(event.target.value);
-    setResults(null);
+    setSelectedAssetId(event.target.value);
   };
 
-  const handleAvatarBaseChange = (event) => {
-    setAvatarBase(event.target.value);
-    setCompatibleAssets([]);
-    setResults(null);
-    setSearchAttempted(false); // Reset search attempted flag
+  const handleSearchChange = (event) => {
+    setSearchQuery(event.target.value);
   };
 
-  const handleModeChange = (event) => {
-    setMode(event.target.value);
-    setResults(null);
-    setCompatibleAssets([]);
-    setSearchAttempted(false);
-    setSourceAvatar('');
-    setAsset('');
-    setAvatarBase('');
-  };
-
-  const findCompatibleAssets = () => {
-    if (!avatarBase) return;
-    
-    setLocalLoading(true);
-    
-    try {
-      // Filter assets that are compatible with the selected avatar base
-      const compatible = allAssets.filter(asset => {
-        
-        // Handle case where compatibleWith is not an array or is undefined
-        if (!asset.compatibleWith || !Array.isArray(asset.compatibleWith)) {
-          // Treat props and accessories without compatibility info as universally compatible
-          return asset.type === 'Prop' || asset.type === 'Accessory';
-        }
-        
-        // If compatibleWith is an empty array, consider it universally compatible for props and accessories
-        if (asset.compatibleWith.length === 0 && (asset.type === 'Prop' || asset.type === 'Accessory')) {
-          return true;
-        }
-        
-        // Check each base in the compatibleWith array
-        for (const base of asset.compatibleWith) {
-          if (base.toLowerCase() === avatarBase.toLowerCase()) {
-            return true;
-          }
-        }
-        
-        return false;
-      });
-      
-      // Map compatible assets to include owned status
-      const enhancedCompatibleAssets = compatible.map(asset => {
-        // Check if this asset's ownedVariant array includes the selected avatarBase
-        let owned = false;
-        
-        if (asset.ownedVariant) {
-          if (Array.isArray(asset.ownedVariant)) {
-            // If ownedVariant is an array, check if the selected base is in it
-            owned = asset.ownedVariant.some(variant => 
-              variant.toLowerCase() === avatarBase.toLowerCase()
-            );
-          } else {
-            // If ownedVariant is a string, compare directly
-            owned = asset.ownedVariant.toLowerCase() === avatarBase.toLowerCase();
-          }
-        }
-        
-        // For props and accessories without compatibility info, mark as universally compatible
-        const isUniversallyCompatible = 
-          (!asset.compatibleWith || 
-           !Array.isArray(asset.compatibleWith) || 
-           asset.compatibleWith.length === 0) && 
-          (asset.type === 'Prop' || asset.type === 'Accessory');
-        
-        return { 
-          ...asset, 
-          owned,
-          isUniversallyCompatible 
-        };
-      });
-      
-      setCompatibleAssets(enhancedCompatibleAssets);
-    } catch (error) {
-      console.error('Error finding compatible assets:', error);
-    } finally {
-      setLocalLoading(false);
-    }
-  };
-
-  const checkCompatibility = async () => {
-    // For list mode, directly call findCompatibleAssets and return
-    if (mode === 'list') {
-      setSearchAttempted(true);
-      findCompatibleAssets();
-      return;
-    }
-    
-    // For asset mode, proceed with regular checks
-    if (!sourceAvatar || !asset) return;
-    
-    setLocalLoading(true);
-    
-    try {
-      // In a future implementation, this could be an API call
-      // For now, we'll handle the check locally
-      
-      let mockResults;
-      
-      // Check asset compatibility with avatar
-      const selectedAsset = allAssets.find(a => a.id.toString() === asset);
-      if (!selectedAsset) {
-        setLocalLoading(false);
-        return;
+  const handleAssetTypeToggle = (type) => {
+    setSelectedAssetTypes(prev => {
+      if (prev.includes(type)) {
+        return prev.filter(t => t !== type);
+      } else {
+        return [...prev, type];
       }
-      
-      const selectedAvatar = allAvatars.find(a => a.id.toString() === sourceAvatar);
-      if (!selectedAvatar) {
-        setLocalLoading(false);
-        return;
-      }
+    });
+  };
 
-      // Check if this is a Prop or Accessory without compatibility info (universally compatible)
-      const isUniversallyCompatible = 
-        (!selectedAsset.compatibleWith || 
-         !Array.isArray(selectedAsset.compatibleWith) || 
-         selectedAsset.compatibleWith.length === 0) && 
-        (selectedAsset.type === 'Prop' || selectedAsset.type === 'Accessory');
-      
-      // Use actual compatibility check
-      const isCompatible = isUniversallyCompatible || 
-                           (selectedAsset.compatibleWith && 
-                           Array.isArray(selectedAsset.compatibleWith) &&
-                           selectedAsset.compatibleWith.some(base => 
-                             base.toLowerCase() === selectedAvatar.base.toLowerCase()
-                           ));
-      
-      // Use actual owned variant check
-      const isOwned = selectedAsset.ownedVariant &&
-                      (Array.isArray(selectedAsset.ownedVariant)
-                        ? selectedAsset.ownedVariant.some(variant =>
-                            variant.toLowerCase() === selectedAvatar.base.toLowerCase()
-                          )
-                        : selectedAsset.ownedVariant.toLowerCase() === selectedAvatar.base.toLowerCase()
-                      );
-      
-      mockResults = {
-        overall: isCompatible ? 'yes' : 'partial',
-        owned: isOwned,
-        isUniversallyCompatible
-      };
-      
-      setResults(mockResults);
-    } catch (error) {
-      console.error('Error checking compatibility:', error);
-    } finally {
-      setLocalLoading(false);
+  const handleModeChange = (newMode) => {
+    setMode(newMode);
+    // Reset pagination when changing modes
+    setPage(1);
+  };
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
+  };
+
+  const handleToggleCompatibleOnly = (event) => {
+    setShowOnlyCompatible(event.target.checked);
+  };
+
+  // Check if an asset variant is owned
+  const isVariantOwned = (asset) => {
+    if (!asset.ownedVariant || !selectedAvatar) return false;
+    
+    if (Array.isArray(asset.ownedVariant)) {
+      return asset.ownedVariant.includes(selectedAvatar.base);
+    } else {
+      return asset.ownedVariant === selectedAvatar.base;
     }
   };
 
-  const getStatusSeverity = (status) => {
-    switch(status) {
-      case 'yes': return 'success';
-      case 'mostly': 
-      case 'partial': return 'warning';
-      case 'no': return 'error';
-      case 'unknown':
-      case 'info':
-      default: return 'info';
-    }
-  };
-
-  // Handle asset card click
-  const handleAssetCardClick = (assetId) => {
-    // In a real implementation, this would open the asset details modal
-    console.log('Asset clicked:', assetId);
-  };
-
-  // Show loading state if loading data from API
-  if (loading.avatars || loading.assets) {
-    return (
-      <Paper sx={{ p: 3, bgcolor: 'background.paper', borderRadius: 3 }}>
-        <Typography variant="h2" sx={{ mb: 2 }}>Compatibility Checker</Typography>
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-          <CircularProgress />
-        </Box>
-      </Paper>
+  // Check compatibility between selected asset and selected avatar
+  const checkSingleCompatibility = () => {
+    if (!selectedAsset || !selectedAvatar) return null;
+    
+    const compatible = selectedAsset.compatibleWith && 
+                      selectedAsset.compatibleWith.includes(selectedAvatar.base);
+    
+    const owned = selectedAsset.ownedVariant && (
+      Array.isArray(selectedAsset.ownedVariant) 
+        ? selectedAsset.ownedVariant.includes(selectedAvatar.base)
+        : selectedAsset.ownedVariant === selectedAvatar.base
     );
-  }
+    
+    return { compatible, owned };
+  };
 
-  // Show error state if there's an API error
-  if (errors.avatars || errors.assets) {
+  if (loading.assets || loading.avatars) {
     return (
-      <Paper sx={{ p: 3, bgcolor: 'background.paper', borderRadius: 3 }}>
-        <Typography variant="h2" sx={{ mb: 2 }}>Compatibility Checker</Typography>
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {errors.avatars || errors.assets}
-        </Alert>
-      </Paper>
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
   return (
-    <Paper sx={{ p: 3, bgcolor: 'background.paper', borderRadius: 3 }}>
-      <Typography variant="h2" sx={{ mb: 2 }}>Compatibility Checker</Typography>
-      
-      <Box sx={{ mb: 3 }}>
-        <FormControl fullWidth sx={{ mb: 2 }}>
-          <InputLabel id="mode-select-label">What do you want to check?</InputLabel>
-          <Select
-            labelId="mode-select-label"
-            id="mode-select"
-            value={mode}
-            onChange={handleModeChange}
-            label="What do you want to check?"
+    <Paper sx={{ p: 3 }}>
+      <motion.div
+        initial={{ y: 10, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <Typography variant="h2" sx={{ mb: 3 }}>Asset Compatibility Checker</Typography>
+        
+        {/* Mode Selection */}
+        <Box sx={{ mb: 3, display: 'flex', gap: 2 }}>
+          <Button
+            variant={mode === 'avatar' ? 'contained' : 'outlined'}
+            onClick={() => handleModeChange('avatar')}
           >
-            <MenuItem value="list">List all compatible assets for an avatar base</MenuItem>
-            <MenuItem value="asset">Asset compatibility with an avatar</MenuItem>
+            Select Avatar & View Compatible Assets
+          </Button>
+          <Button
+            variant={mode === 'single' ? 'contained' : 'outlined'}
+            onClick={() => handleModeChange('single')}
+          >
+            Check Single Asset & Avatar
+          </Button>
+        </Box>
+        
+        {/* Avatar Selection */}
+        <FormControl fullWidth sx={{ mb: 3 }}>
+          <InputLabel id="avatar-select-label">Select Avatar</InputLabel>
+          <Select
+            labelId="avatar-select-label"
+            value={selectedAvatarId}
+            label="Select Avatar"
+            onChange={handleAvatarChange}
+          >
+            <MenuItem value="">
+              <em>None</em>
+            </MenuItem>
+            {avatars.map((avatar) => (
+              <MenuItem key={avatar.id} value={avatar.id}>
+                {avatar.name} ({avatar.base})
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
-      </Box>
-      
-      {/* Different input fields based on mode */}
-      {mode === 'list' && (
-        <Box sx={{ mb: 3 }}>
-          <FormControl fullWidth variant="outlined">
-            <InputLabel id="avatar-base-select-label">Avatar Base</InputLabel>
+        
+        {/* Asset Selection for Single Mode */}
+        {mode === 'single' && (
+          <FormControl fullWidth sx={{ mb: 3 }}>
+            <InputLabel id="asset-select-label">Select Asset</InputLabel>
             <Select
-              labelId="avatar-base-select-label"
-              id="avatar-base-select"
-              value={avatarBase}
-              onChange={handleAvatarBaseChange}
-              label="Avatar Base"
+              labelId="asset-select-label"
+              value={selectedAssetId}
+              label="Select Asset"
+              onChange={handleAssetChange}
             >
-              <MenuItem value=""><em>Select an avatar base</em></MenuItem>
-              {uniqueBases.map((base) => (
-                <MenuItem key={base} value={base}>
-                  {base}
+              <MenuItem value="">
+                <em>None</em>
+              </MenuItem>
+              {assets.all && assets.all.map((asset) => (
+                <MenuItem key={asset.id} value={asset.id}>
+                  {asset.name} ({asset.type})
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
-          <Button 
-            variant="contained" 
-            fullWidth 
-            sx={{ mt: 2 }}
-            disabled={localLoading || !avatarBase}
-            onClick={checkCompatibility}
-          >
-            {localLoading ? <CircularProgress size={24} color="inherit" /> : 'Find Compatible Assets'}
-          </Button>
-        </Box>
-      )}
+        )}
+      </motion.div>
       
-      {mode === 'asset' && (
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth variant="outlined">
-              <InputLabel id="source-avatar-select-label">Your Avatar</InputLabel>
-              <Select
-                labelId="source-avatar-select-label"
-                id="source-avatar-select"
-                value={sourceAvatar}
-                onChange={handleSourceAvatarChange}
-                label="Your Avatar"
-              >
-                <MenuItem value=""><em>Select an avatar</em></MenuItem>
-                {avatars.map((avatar) => (
-                  <MenuItem key={avatar.id} value={avatar.id.toString()}>
-                    {avatar.name} ({avatar.base})
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth variant="outlined">
-              <InputLabel id="asset-select-label">Asset to Check</InputLabel>
-              <Select
-                labelId="asset-select-label"
-                id="asset-select"
-                value={asset}
-                onChange={handleAssetChange}
-                label="Asset to Check"
-              >
-                <MenuItem value=""><em>Select an asset</em></MenuItem>
-                {allAssets.map((asset) => (
-                  <MenuItem key={asset.id} value={asset.id.toString()}>
-                    {asset.name} ({asset.type})
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12}>
-            <Button 
-              variant="contained" 
-              fullWidth 
-              disabled={localLoading || !sourceAvatar || !asset}
-              onClick={checkCompatibility}
-            >
-              {localLoading ? <CircularProgress size={24} color="inherit" /> : 'Check Compatibility'}
-            </Button>
-          </Grid>
-        </Grid>
-      )}
-      
-      {/* Compatible Assets List (for "list" mode) */}
-      {mode === 'list' && compatibleAssets.length > 0 && (
-        <Box sx={{ mt: 3 }}>
-          <Divider sx={{ mb: 3 }} />
-          
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h3">Compatible Assets for {avatarBase}</Typography>
-            <Chip 
-              label={`${compatibleAssets.length} assets found`} 
-              color="primary" 
-            />
-          </Box>
-          
-          <Grid container spacing={3}>
-            {compatibleAssets.map((asset) => (
-              <Grid item xs={12} sm={6} md={4} key={asset.id}>
-                <AssetCard owned={asset.owned} universal={asset.isUniversallyCompatible}>
-                  <CardActionArea onClick={() => handleAssetCardClick(asset.id)}>
-                    {asset.isUniversallyCompatible && (
-                      <UniversalBadge>
-                        <PublicIcon fontSize="small" sx={{ mr: 0.5 }} />
-                        Universal
-                      </UniversalBadge>
-                    )}
-                    { asset.type !== 'Prop' && asset.type !== 'Accessory' ?
-                      <OwnershipBadge owned={asset.owned}>
-                        {asset.owned ? (
-                          <>
-                            <VerifiedIcon fontSize="small" />
-                            Owned
-                          </>
-                        ) : (
-                          <>
-                            <CloseIcon fontSize="small" />
-                            Not Owned
-                          </>
-                        )}
-                      </OwnershipBadge>
-                      : ""
-                    }
-                    <CardMedia
-                      component="img"
-                      height="140"
-                      image={asset.thumbnail}
-                      alt={asset.name}
-                    />
-                    <CardContent>
-                      <Typography variant="h3">{asset.name}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {asset.type} • by {asset.creator}
-                      </Typography>
-                      <Box sx={{ display: 'flex', mt: 1, flexWrap: 'wrap', gap: 0.5 }}>
-                        {asset.tags && asset.tags.slice(0, 2).map((tag, idx) => (
-                          <Chip key={idx} label={tag} size="small" variant="outlined" />
-                        ))}
-                      </Box>
-                    </CardContent>
-                  </CardActionArea>
-                </AssetCard>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
-      )}
-      
-      {/* Compatibility Results (for "asset" mode) */}
-      {mode === 'asset' && results && (
-        <Box sx={{ mt: 3 }}>
-          <Divider sx={{ mb: 3 }} />
-          
-          <Typography variant="h3" sx={{ mb: 2 }}>Compatibility Results</Typography>
-          
-          <Alert 
-            severity={getStatusSeverity(results.overall)}
-            sx={{ mb: 3 }}
-          >
-            {results.isUniversallyCompatible ? (
-              <>
-                <strong>This is a universally compatible asset!</strong> Props and accessories without specific compatibility settings work with all avatar bases.
-              </>
-            ) : results.overall === 'yes' ? (
-              'This asset is compatible with your avatar!'
-            ) : results.overall === 'mostly' ? (
-              'This asset is mostly compatible with your avatar with minor adjustments needed.'
-            ) : results.overall === 'partial' ? (
-              'This asset was not made for this avatar and will require significant adjustments.'
-            ) : results.overall === 'no' ? (
-              'This asset is not compatible with your avatar.'
-            ) : (
-              'Compatibility is unknown - you may need to test manually.'
-            )}
-          </Alert>
-          
-          {/* Add ownership badge for asset mode */}
-          {mode === 'asset' && results.owned !== undefined && (
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              p: 2, 
-              borderRadius: 1,
-              bgcolor: results.owned ? 'success.main' : 'error.main',
-              color: 'white',
-              mb: 3
-            }}>
-              {results.owned ? (
-                <>
-                  <VerifiedIcon sx={{ mr: 2 }} />
-                  <Typography>
-                    You own the correct variant of this asset for your avatar.
+      {/* Avatar View Mode */}
+      {mode === 'avatar' ? (
+        <motion.div
+          initial={{ y: 10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+        >
+          {selectedAvatar ? (
+            <Box>
+              <Typography variant="h3" sx={{ mb: 2 }}>
+                Compatible Assets for {selectedAvatar.name}
+              </Typography>
+              
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Box
+                  component="img"
+                  src={selectedAvatar.thumbnail}
+                  alt={selectedAvatar.name}
+                  sx={{ 
+                    width: 60, 
+                    height: 60, 
+                    borderRadius: '50%', 
+                    mr: 2,
+                    objectFit: 'cover',
+                    border: '2px solid',
+                    borderColor: 'primary.main'
+                  }}
+                />
+                <Box>
+                  <Typography variant="h4">{selectedAvatar.name}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Base: {selectedAvatar.base}
                   </Typography>
-                </>
+                </Box>
+              </Box>
+              
+              <Box sx={{ mb: 3 }}>
+                <TextField
+                  fullWidth
+                  placeholder="Search compatible assets..."
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  InputProps={{
+                    startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+                  }}
+                />
+              </Box>
+              
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
+                <Typography sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+                  <FilterListIcon sx={{ mr: 0.5 }} /> Filter by type:
+                </Typography>
+                {assetTypes.map((type) => (
+                  <Chip
+                    key={type}
+                    label={type}
+                    onClick={() => handleAssetTypeToggle(type)}
+                    color={selectedAssetTypes.includes(type) ? 'primary' : 'default'}
+                    variant={selectedAssetTypes.includes(type) ? 'filled' : 'outlined'}
+                  />
+                ))}
+              </Box>
+              
+              {compatibleAssets.length === 0 ? (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  No compatible assets found for the {selectedAvatar.base} avatar base.
+                </Alert>
               ) : (
                 <>
-                  <CloseIcon sx={{ mr: 2 }} />
-                  <Typography>
-                    You do not own the specific variant of this asset for this avatar. You might need to purchase the correct variant.
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Found {compatibleAssets.length} compatible assets for the {selectedAvatar.base} avatar base.
                   </Typography>
+                  
+                  <List sx={{ bgcolor: 'background.paper', borderRadius: 2, mb: 3 }}>
+                    {paginatedAssets.map((asset) => (
+                      <React.Fragment key={asset.id}>
+                        <ListItem alignItems="flex-start">
+                          <ListItemIcon>
+                            {isVariantOwned(asset) ? (
+                              <Tooltip title="You own this variant">
+                                <VerifiedIcon color="success" />
+                              </Tooltip>
+                            ) : (
+                              <Tooltip title="Compatible but not owned">
+                                <CheckCircleIcon color="primary" />
+                              </Tooltip>
+                            )}
+                          </ListItemIcon>
+                          <Box 
+                            component="img"
+                            src={asset.thumbnail}
+                            alt={asset.name}
+                            sx={{ 
+                              width: 60, 
+                              height: 60, 
+                              borderRadius: 1, 
+                              mr: 2,
+                              objectFit: 'cover'
+                            }}
+                          />
+                          <ListItemText
+                            primary={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="h6">{asset.name}</Typography>
+                                <Chip label={asset.type} size="small" />
+                              </Box>
+                            }
+                            secondary={
+                              <React.Fragment>
+                                <Typography component="span" variant="body2" color="text.primary">
+                                  Creator: {asset.creator}
+                                </Typography>
+                                <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                  {asset.description && asset.description.substring(0, 100)}
+                                  {asset.description && asset.description.length > 100 && '...'}
+                                </Typography>
+                                <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                                  {isVariantOwned(asset) ? (
+                                    <Chip size="small" color="success" label="Owned" icon={<VerifiedIcon />} />
+                                  ) : (
+                                    <Chip size="small" color="primary" label="Compatible" />
+                                  )}
+                                  {asset.tags && asset.tags.slice(0, 3).map((tag, index) => (
+                                    <Chip key={index} size="small" label={tag} variant="outlined" />
+                                  ))}
+                                </Box>
+                              </React.Fragment>
+                            }
+                          />
+                        </ListItem>
+                        <Divider component="li" />
+                      </React.Fragment>
+                    ))}
+                  </List>
+                  
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 2 }}>
+                      <Pagination 
+                        count={totalPages} 
+                        page={page} 
+                        onChange={handlePageChange} 
+                        color="primary" 
+                      />
+                    </Box>
+                  )}
                 </>
               )}
             </Box>
+          ) : (
+            <Alert severity="info">
+              Please select an avatar to view compatible assets.
+            </Alert>
           )}
-        </Box>
-      )}
-      
-      {/* Message when no compatible assets are found */}
-      {mode === 'list' && avatarBase && compatibleAssets.length === 0 && !localLoading && searchAttempted && (
-        <Alert severity="info" sx={{ mt: 3 }}>
-          No compatible assets found for {avatarBase}. Try selecting a different avatar base.
-        </Alert>
+        </motion.div>
+      ) : (
+        <motion.div
+          initial={{ y: 10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+        >
+          {selectedAvatar && selectedAsset ? (
+            <Box>
+              <Typography variant="h3" sx={{ mb: 3 }}>
+                Compatibility Check Result
+              </Typography>
+              
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={5}>
+                  <Card sx={{ 
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}>
+                    <CardMedia
+                      component="img"
+                      height={240}
+                      image={selectedAsset.thumbnail}
+                      alt={selectedAsset.name}
+                      sx={{ objectFit: 'cover' }}
+                    />
+                    <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <Typography variant="h4" sx={{ mb: 1 }}>{selectedAsset.name}</Typography>
+                      <Chip label={selectedAsset.type} sx={{ mb: 2 }} />
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Creator: {selectedAsset.creator}
+                      </Typography>
+                      {selectedAsset.tags && selectedAsset.tags.length > 0 && (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 0.5 }}>
+                          {selectedAsset.tags.map((tag, index) => (
+                            <Chip key={index} label={tag} size="small" />
+                          ))}
+                        </Box>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} md={2} sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  flexDirection: 'column'
+                }}>
+                  {checkSingleCompatibility() && (
+                    checkSingleCompatibility().compatible ? (
+                      <CheckCircleIcon 
+                        color={checkSingleCompatibility().owned ? "success" : "primary"} 
+                        sx={{ fontSize: 60, mb: 2 }}
+                      />
+                    ) : (
+                      <CancelIcon color="error" sx={{ fontSize: 60, mb: 2 }} />
+                    )
+                  )}
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
+                    {checkSingleCompatibility() && (
+                      checkSingleCompatibility().compatible ? (
+                        checkSingleCompatibility().owned ? (
+                          "Owned & Compatible"
+                        ) : (
+                          "Compatible"
+                        )
+                      ) : (
+                        "Not Compatible"
+                      )
+                    )}
+                  </Typography>
+                </Grid>
+                
+                <Grid item xs={12} md={5}>
+                  <Card sx={{ 
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}>
+                    <CardMedia
+                      component="img"
+                      height={240}
+                      image={selectedAvatar.thumbnail}
+                      alt={selectedAvatar.name}
+                      sx={{ objectFit: 'cover' }}
+                    />
+                    <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <Typography variant="h4" sx={{ mb: 1 }}>{selectedAvatar.name}</Typography>
+                      <Chip label={`Base: ${selectedAvatar.base}`} sx={{ mb: 2 }} />
+                      {selectedAvatar.notes && (
+                        <Typography variant="body2" color="text.secondary">
+                          {selectedAvatar.notes}
+                        </Typography>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+              
+              <Box sx={{ mt: 4, textAlign: 'center', p: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
+                <Typography variant="body1" sx={{ mb: 2, fontWeight: 'medium' }}>
+                  {checkSingleCompatibility() && checkSingleCompatibility().compatible ? (
+                    checkSingleCompatibility().owned ? (
+                      `You own this asset for the ${selectedAvatar.base} avatar base.`
+                    ) : (
+                      `This asset is compatible with the ${selectedAvatar.base} avatar base, but you don't own this variant.`
+                    )
+                  ) : (
+                    `This asset is not compatible with the ${selectedAvatar.base} avatar base.`
+                  )}
+                </Typography>
+                
+                <Divider sx={{ my: 2 }} />
+                
+                <Typography variant="body2" color="text.secondary">
+                  {selectedAsset.compatibleWith && selectedAsset.compatibleWith.length > 0 ? (
+                    <>
+                      <Box component="span" sx={{ fontWeight: 'bold', display: 'block', mb: 1 }}>Compatible with:</Box>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 0.5 }}>
+                        {selectedAsset.compatibleWith.map((base, index) => (
+                          <Chip 
+                            key={index} 
+                            label={base} 
+                            size="small"
+                            color={base === selectedAvatar.base ? "primary" : "default"}
+                            variant={base === selectedAvatar.base ? "filled" : "outlined"}
+                          />
+                        ))}
+                      </Box>
+                    </>
+                  ) : (
+                    "This asset doesn't have compatibility information."
+                  )}
+                </Typography>
+              </Box>
+            </Box>
+          ) : (
+            <Alert severity="info">
+              Please select both an avatar and an asset to check compatibility.
+            </Alert>
+          )}
+        </motion.div>
       )}
     </Paper>
   );
