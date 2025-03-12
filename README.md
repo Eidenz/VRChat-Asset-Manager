@@ -6,13 +6,12 @@ A web companion app for managing VRChat assets, including avatars, clothing, pro
 
 ## ⚠️ Disclaimer / AI-Generated Project Warning
 
-**This project was entirely coded using AI (Claude 3.7 Sonnet Thinking).**
+**This project was mostly coded using AI (Claude 3.7 Sonnet Thinking).**
 
 This code is provided as-is. While effort has been made to ensure functionality, it comes with no warranty or guarantee of support.
 
 **Please note:**
 
-- This project is shared without dedicated support resources.
 - Use of this code is at your own risk.
 - No official support will be provided for setup, usage, customization, or troubleshooting.
 - Community contributions and improvements via pull requests are welcome, but please do not expect personalized assistance.
